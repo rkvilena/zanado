@@ -46,7 +46,10 @@ class MainActivity : FlutterActivity() {
                         "commitFromPath" -> {
                             val displayName = call.argument<String>("displayName")!!
                             val partPath = call.argument<String>("partPath")!!
-                            val expectedSize = call.argument<Long>("expectedSize")
+                            // Platform channel encodes Dart ints as Integer when
+                            // they fit; requiring Long here crashes on any
+                            // file under ~2 GB. Accept both Number widths.
+                            val expectedSize = call.argument<Number>("expectedSize")?.toLong()
                             result.success(
                                 publishFile(displayName, File(partPath), expectedSize, deleteSource = true)
                             )
