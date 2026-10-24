@@ -20,6 +20,13 @@ class TransferProtocol {
   /// represented as a 64-char lowercase hex string.
   static const String checksumAlgorithm = 'sha-256';
 
+  /// Response headers (additive extension, Phase 2B): the sender echoes the
+  /// file's integrity metadata so the receiver can verify the download
+  /// without a second request. The name header carries a percent-encoded
+  /// UTF-8 name (non-ASCII names must survive the wire).
+  static const String checksumHeader = 'X-Zanado-Checksum';
+  static const String fileNameHeader = 'X-Zanado-File-Name';
+
   /// Session lifetime bounds. The requested duration is clamped into this
   /// range so a hostile or buggy payload can neither create an
   /// effectively permanent session nor expire instantly.
