@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -141,6 +142,17 @@ class TransferReceiver {
           expectedSize: declaredLength < 0 ? null : declaredLength,
         );
       } on StorageException catch (e) {
+        // saveStream wraps source-stream errors; a transport failure must
+        // surface as a connection failure, not storage (2E finding).
+        final cause = e.cause;
+        if (cause is SocketException) {
+          return DownloadFailure(DownloadFailureKind.connection,
+              message: cause.message);
+        }
+        if (cause is HttpException) {
+          return DownloadFailure(DownloadFailureKind.connection,
+              message: cause.message);
+        }
         if (e.message.startsWith('Size mismatch')) {
           return DownloadFailure(
             DownloadFailureKind.sizeMismatch,
@@ -192,11 +204,19 @@ class TransferReceiver {
   }
 
   /// Passes chunks through untouched while feeding the streaming digest —
-  /// hashing without buffering the whole file.
+  /// hashing without buffering the whole file. Network errors are re-wrapped
+  /// as [HttpException] so `saveStream`'s catch-all StorageException wrapping
+  /// cannot misclassify a connection abort as a storage failure (2E finding).
   Stream<List<int>> _tapped(Stream<List<int>> source, Sha256StreamSink sink) {
-    return source.map((chunk) {
-      sink.add(chunk);
-      return chunk;
-    });
+    return source
+        .map((chunk) {
+          sink.add(chunk);
+          return chunk;
+        })
+        .transform(StreamTransformer.fromHandlers(
+          handleError: (Object e, StackTrace st, EventSink<List<int>> dst) {
+            dst.addError(HttpException(e.toString()));
+          },
+        ));
   }
 }
