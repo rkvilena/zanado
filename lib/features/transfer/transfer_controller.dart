@@ -156,10 +156,16 @@ class SenderController extends Notifier<SenderState> {
           _poll?.cancel();
           _poll = null;
           final terminal = s.session.status;
+          // Expired with no receiver is a sender-visible failure, not a
+          // completed transfer (Phase 3C).
+          final expired = terminal == TransferSessionStatus.expired;
           state = state.copyWith(
-            phase: terminal == TransferSessionStatus.failed
+            phase: terminal == TransferSessionStatus.failed || expired
                 ? SenderPhase.failed
                 : SenderPhase.completed,
+            error: expired
+                ? 'The transfer session expired before a receiver connected.'
+                : null,
             receiverConnected: s.receiverConnected,
           );
           return;
@@ -250,12 +256,16 @@ class ReceiverState {
 }
 
 /// Drives the receiver flow: manual host/port/token entry → download with
-/// live progress → cancel → result.
+/// live progress → cancel → result → retry / return-to-form (Phase 3C).
 class ReceiverController extends Notifier<ReceiverState> {
   TransferCancelToken? _cancel;
 
   /// (time, cumulative bytes) samples for the rolling-window speed estimate.
   final List<MapEntry<DateTime, int>> _speedSamples = [];
+
+  String? _lastHost;
+  int? _lastPort;
+  String? _lastToken;
 
   @override
   ReceiverState build() => const ReceiverState();
@@ -289,6 +299,9 @@ class ReceiverController extends Notifier<ReceiverState> {
     }
     _cancel = TransferCancelToken();
     _speedSamples.clear();
+    _lastHost = host.trim();
+    _lastPort = parsedPort;
+    _lastToken = token.trim();
     state = const ReceiverState(busy: true);
     try {
       final outcome = await ref.read(transferReceiverProvider).download(
@@ -312,6 +325,21 @@ class ReceiverController extends Notifier<ReceiverState> {
   }
 
   void cancel() => _cancel?.cancel();
+
+  /// Re-issues the last download with the same credentials (Phase 3C);
+  /// silently ignored when no download was started from this controller.
+  Future<void> retry() {
+    final host = _lastHost;
+    final port = _lastPort;
+    final token = _lastToken;
+    if (host == null || port == null || token == null) {
+      return Future.value();
+    }
+    return download(host, '$port', token);
+  }
+
+  /// Return-to-start: clears the result so the connection form shows again.
+  void reset() => state = const ReceiverState();
 
   void clearError() => state = state.copyWith(clearError: true);
 }

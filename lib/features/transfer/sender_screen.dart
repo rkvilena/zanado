@@ -90,18 +90,26 @@ class SenderScreen extends ConsumerWidget {
               label: const Text('Cancel transfer'),
             ),
           ],
-          if (state.phase == SenderPhase.completed)
-            const _StatusBanner(
-              icon: Icons.check_circle,
-              color: Colors.green,
-              text: 'Transfer completed — the receiver saved the file.',
-            ),
-          if (state.phase == SenderPhase.failed)
-            const _StatusBanner(
-              icon: Icons.error,
-              color: Colors.red,
-              text: 'Transfer failed — the receiver did not complete it.',
-            ),
+          if (state.phase == SenderPhase.completed ||
+            state.phase == SenderPhase.failed) ...[
+          state.phase == SenderPhase.completed
+              ? const _StatusBanner(
+                  icon: Icons.check_circle,
+                  color: Colors.green,
+                  text: 'Transfer completed — the receiver saved the file.',
+                )
+              : const _StatusBanner(
+                  icon: Icons.error,
+                  color: Colors.red,
+                  text: 'Transfer failed — the receiver did not complete it.',
+                ),
+          const SizedBox(height: 12),
+          FilledButton.tonalIcon(
+            onPressed: controller.stop,
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('Start over'),
+          ),
+        ],
           if (state.error != null)
             MaterialBanner(
               content: Text(state.error!),

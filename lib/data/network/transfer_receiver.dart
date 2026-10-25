@@ -17,6 +17,7 @@ class DownloadSuccess extends DownloadOutcome {
     required this.file,
     required this.expectedChecksum,
     required this.actualChecksum,
+    this.wireFileName = '',
   });
 
   final StoredFile file;
@@ -26,6 +27,11 @@ class DownloadSuccess extends DownloadOutcome {
 
   /// Digest computed over the received bytes.
   final String actualChecksum;
+
+  /// Name the sender declared in `X-Zanado-File-Name`, before the storage
+  /// layer's duplicate rename (`photo.jpg` → `photo (1).jpg`). The UI
+  /// compares it with [StoredFile.name] to surface renames.
+  final String wireFileName;
 }
 
 enum DownloadFailureKind {
@@ -217,6 +223,7 @@ class TransferReceiver {
         file: stored,
         expectedChecksum: expectedChecksum!,
         actualChecksum: actualChecksum,
+        wireFileName: fileName,
       );
     } on SocketException catch (e) {
       return DownloadFailure(DownloadFailureKind.connection, message: e.message);

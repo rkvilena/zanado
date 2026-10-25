@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/transfer_protocol.dart';
 import '../../core/utils/bytes_format.dart';
 import '../../data/network/transfer_receiver.dart';
 import 'transfer_controller.dart';
@@ -89,6 +90,24 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
           if (state.outcome != null) ...[
             const SizedBox(height: 12),
             _OutcomeBanner(outcome: state.outcome!),
+            if (state.outcome is DownloadFailure &&
+                (state.outcome! as DownloadFailure).kind !=
+                    DownloadFailureKind.cancelled) ...[
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                onPressed: controller.retry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+              ),
+            ],
+            if (state.outcome is DownloadSuccess) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: controller.reset,
+                icon: const Icon(Icons.playlist_add),
+                label: const Text('Receive another file'),
+              ),
+            ],
           ],
           if (state.error != null)
             MaterialBanner(
@@ -155,6 +174,28 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
+/// User-facing text per sender rejection code (Phase 3C); the raw code
+/// message is the fallback for unknown/unparsed bodies.
+String _rejectionText(TransferErrorCode? code, String fallback) {
+  switch (code) {
+    case TransferErrorCode.expiredToken:
+      return 'The sender\u2019s transfer session expired. '
+          'Ask them to start a new transfer.';
+    case TransferErrorCode.missingToken:
+    case TransferErrorCode.invalidToken:
+      return 'The token was rejected — check it against the sender\u2019s '
+          'connection code.';
+    case TransferErrorCode.receiverAlreadyConnected:
+      return 'Another device is already downloading from this sender.';
+    case TransferErrorCode.fileUnavailable:
+      return 'The sender can no longer provide the file.';
+    case TransferErrorCode.unsupportedProtocol:
+      return 'The sender runs an incompatible app version.';
+    case null:
+      return 'Sender rejected the download: $fallback';
+  }
+}
+
 class _OutcomeBanner extends StatelessWidget {
   const _OutcomeBanner({required this.outcome});
 
@@ -164,11 +205,14 @@ class _OutcomeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (outcome) {
       case final DownloadSuccess s:
+        final renamed = s.wireFileName.isNotEmpty &&
+            s.wireFileName != s.file.name;
         return _Banner(
           icon: Icons.check_circle,
           color: Colors.green,
           text: 'Saved "${s.file.name}" (${formatBytes(s.file.sizeBytes)}) — '
-              'checksum verified',
+              'checksum verified'
+              '${renamed ? ' (renamed — "${s.wireFileName}" already existed)' : ''}',
         );
       case final DownloadFailure f:
         final (icon, color, text) = switch (f.kind) {
@@ -190,7 +234,7 @@ class _OutcomeBanner extends StatelessWidget {
           DownloadFailureKind.rejectedBySender => (
             Icons.block,
             Colors.red,
-            'Sender rejected the download: ${f.message}'
+            _rejectionText(f.errorCode, f.message)
           ),
           DownloadFailureKind.sizeMismatch => (
             Icons.error,
