@@ -19,27 +19,41 @@ class SenderState {
   const SenderState({
     this.phase = SenderPhase.idle,
     this.fileName,
+    this.fileSizeBytes,
     this.lanAddress,
     this.port,
     this.token,
+    this.expiresAt,
+    this.receiverConnected = false,
     this.error,
   });
 
   final SenderPhase phase;
   final String? fileName;
+  final int? fileSizeBytes;
 
   /// What the receiver must enter: host, port, token.
   final InternetAddress? lanAddress;
   final int? port;
   final String? token;
+
+  /// Session lifetime end for the UI countdown (MVP 3 Phase 3A).
+  final DateTime? expiresAt;
+
+  /// Monotonic while the session lives: the server never un-connects a
+  /// receiver; only starting a new session clears it.
+  final bool receiverConnected;
   final String? error;
 
   SenderState copyWith({
     SenderPhase? phase,
     String? fileName,
+    int? fileSizeBytes,
     InternetAddress? lanAddress,
     int? port,
     String? token,
+    DateTime? expiresAt,
+    bool receiverConnected = false,
     String? error,
     bool clearConnection = false,
     bool clearError = false,
@@ -47,9 +61,15 @@ class SenderState {
       SenderState(
         phase: phase ?? this.phase,
         fileName: fileName ?? this.fileName,
+        fileSizeBytes:
+            clearConnection ? null : (fileSizeBytes ?? this.fileSizeBytes),
         lanAddress: clearConnection ? null : (lanAddress ?? this.lanAddress),
         port: clearConnection ? null : (port ?? this.port),
         token: clearConnection ? null : (token ?? this.token),
+        expiresAt: clearConnection ? null : (expiresAt ?? this.expiresAt),
+        receiverConnected: clearConnection
+            ? false
+            : (receiverConnected || this.receiverConnected),
         error: clearError ? null : (error ?? this.error),
       );
 }
@@ -90,8 +110,11 @@ class SenderController extends Notifier<SenderState> {
         sizeBytes: size,
         sha256: hash.finalize(),
       );
-      state = SenderState(phase: SenderPhase.ready, fileName: files.first.name)
-          .copyWith(clearConnection: true, clearError: true);
+      state = SenderState(
+        phase: SenderPhase.ready,
+        fileName: files.first.name,
+        fileSizeBytes: size,
+      ).copyWith(clearConnection: true, clearError: true);
     } catch (e) {
       _selected = null;
       state = SenderState(error: 'Picking the file failed: $e');
@@ -102,7 +125,11 @@ class SenderController extends Notifier<SenderState> {
   /// the metadata that [pickFile] computes from real bytes.
   void injectFileForTest(SelectedFile selected) {
     _selected = selected;
-    state = SenderState(phase: SenderPhase.ready, fileName: selected.name);
+    state = SenderState(
+      phase: SenderPhase.ready,
+      fileName: selected.name,
+      fileSizeBytes: selected.sizeBytes,
+    );
   }
 
   Future<void> startServing() async {
@@ -124,22 +151,29 @@ class SenderController extends Notifier<SenderState> {
       _server = server;
       _poll = Timer.periodic(const Duration(milliseconds: 500), (_) {
         final s = _server;
-        if (s == null || !s.isRunning) {
+        if (s == null) return;
+        if (!s.isRunning) {
           _poll?.cancel();
           _poll = null;
-          final terminal = s?.session.status;
+          final terminal = s.session.status;
           state = state.copyWith(
             phase: terminal == TransferSessionStatus.failed
                 ? SenderPhase.failed
                 : SenderPhase.completed,
+            receiverConnected: s.receiverConnected,
           );
+          return;
         }
+        // Tick the connected flag every cycle so the UI rebuilds for the
+        // countdown as well, not only on state transitions.
+        state = state.copyWith(receiverConnected: s.receiverConnected);
       });
       state = state.copyWith(
         phase: SenderPhase.serving,
         lanAddress: lan,
         port: server.port,
         token: server.session.token,
+        expiresAt: server.session.expiresAt,
       );
     } catch (e) {
       await _teardown();
@@ -167,11 +201,27 @@ class SenderController extends Notifier<SenderState> {
   }
 }
 
-/// Receiver-side debug state (Phase 2D).
+/// Receiver-side state (MVP 3 Phase 3B).
 class ReceiverState {
-  const ReceiverState({this.busy = false, this.outcome, this.error});
+  const ReceiverState({
+    this.busy = false,
+    this.bytesReceived = 0,
+    this.totalBytes = -1,
+    this.speedBytesPerSec = 0,
+    this.outcome,
+    this.error,
+  });
 
   final bool busy;
+
+  /// Live download progress from the receiver engine; `totalBytes` is -1
+  /// while unknown (no Content-Length / response not started).
+  final int bytesReceived;
+  final int totalBytes;
+
+  /// Bytes per second over a small rolling window, derived in this state
+  /// layer from consecutive progress events.
+  final double speedBytesPerSec;
 
   /// Raw outcome of the last download attempt (success or typed failure).
   final DownloadOutcome? outcome;
@@ -179,22 +229,57 @@ class ReceiverState {
 
   ReceiverState copyWith({
     bool? busy,
+    int? bytesReceived,
+    int? totalBytes,
+    double? speedBytesPerSec,
     DownloadOutcome? outcome,
     String? error,
     bool clearOutcome = false,
     bool clearError = false,
+    bool clearProgress = false,
   }) =>
       ReceiverState(
         busy: busy ?? this.busy,
+        bytesReceived: clearProgress ? 0 : (bytesReceived ?? this.bytesReceived),
+        totalBytes: clearProgress ? -1 : (totalBytes ?? this.totalBytes),
+        speedBytesPerSec:
+            clearProgress ? 0 : (speedBytesPerSec ?? this.speedBytesPerSec),
         outcome: clearOutcome ? null : (outcome ?? this.outcome),
         error: clearError ? null : (error ?? this.error),
       );
 }
 
-/// Drives the receiver flow: manual host/port/token entry → download → result.
+/// Drives the receiver flow: manual host/port/token entry → download with
+/// live progress → cancel → result.
 class ReceiverController extends Notifier<ReceiverState> {
+  TransferCancelToken? _cancel;
+
+  /// (time, cumulative bytes) samples for the rolling-window speed estimate.
+  final List<MapEntry<DateTime, int>> _speedSamples = [];
+
   @override
   ReceiverState build() => const ReceiverState();
+
+  void _onProgress(int bytesReceived, int totalBytes) {
+    final now = DateTime.now();
+    _speedSamples.add(MapEntry(now, bytesReceived));
+    const window = Duration(seconds: 3);
+    while (_speedSamples.length > 1 &&
+        now.difference(_speedSamples.first.key) > window) {
+      _speedSamples.removeAt(0);
+    }
+    var speed = 0.0;
+    final first = _speedSamples.first;
+    final elapsedMs = now.difference(first.key).inMilliseconds;
+    if (_speedSamples.length >= 2 && elapsedMs > 0) {
+      speed = (bytesReceived - first.value) / (elapsedMs / 1000);
+    }
+    state = state.copyWith(
+      bytesReceived: bytesReceived,
+      totalBytes: totalBytes,
+      speedBytesPerSec: speed,
+    );
+  }
 
   Future<void> download(String host, String port, String token) async {
     final parsedPort = int.tryParse(port.trim());
@@ -202,18 +287,31 @@ class ReceiverController extends Notifier<ReceiverState> {
       state = state.copyWith(error: 'Enter the sender IP, port, and token.');
       return;
     }
-    state = state.copyWith(busy: true, clearOutcome: true, clearError: true);
+    _cancel = TransferCancelToken();
+    _speedSamples.clear();
+    state = const ReceiverState(busy: true);
     try {
       final outcome = await ref.read(transferReceiverProvider).download(
             host: host.trim(),
             port: parsedPort,
             token: token.trim(),
+            onProgress: _onProgress,
+            cancelToken: _cancel,
           );
-      state = ReceiverState(outcome: outcome);
+      state = state.copyWith(
+        busy: false,
+        outcome: outcome,
+        speedBytesPerSec: 0,
+      );
     } catch (e) {
       state = ReceiverState(error: 'Unexpected error: $e');
+    } finally {
+      _cancel = null;
+      _speedSamples.clear();
     }
   }
+
+  void cancel() => _cancel?.cancel();
 
   void clearError() => state = state.copyWith(clearError: true);
 }

@@ -48,6 +48,10 @@ enum DownloadFailureKind {
 
   /// Storage layer failed to persist the received bytes.
   storage,
+
+  /// The user cancelled the download on the receiver side; the partial file
+  /// is cleaned up by the storage layer's interrupted-stream handling.
+  cancelled,
 }
 
 class DownloadFailure extends DownloadOutcome {
@@ -68,6 +72,17 @@ class DownloadFailure extends DownloadOutcome {
       'DownloadFailure($kind, ${errorCode?.wireName}, $message)';
 }
 
+/// Co-operative cancellation handle for a receiver download (MVP 3 Phase 3B).
+/// The receiver checks it between chunks; cancelling aborts the stream and
+/// yields a `DownloadFailureKind.cancelled` outcome.
+class TransferCancelToken {
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  void cancel() => _cancelled = true;
+}
+
 /// Receiver-side downloader (Phase 2C, Module B): fetches one file from a
 /// sender `TransferServer` over the Phase 2A contract and commits it through
 /// the storage abstraction.
@@ -86,11 +101,23 @@ class TransferReceiver {
   final StorageRepository storage;
   final Duration connectTimeout;
 
+  /// [onProgress] fires once per received chunk with the running byte count;
+  /// `totalBytes` is the declared Content-Length, or -1 when the sender did
+  /// not declare one. Optional [cancelToken] enables co-operative
+  /// cancellation (MVP 3 Phase 3B).
   Future<DownloadOutcome> download({
     required String host,
     required int port,
     required String token,
+    void Function(int bytesReceived, int totalBytes)? onProgress,
+    TransferCancelToken? cancelToken,
   }) async {
+    if (cancelToken?.isCancelled ?? false) {
+      return const DownloadFailure(
+        DownloadFailureKind.cancelled,
+        message: 'Download cancelled before it started',
+      );
+    }
     final client = HttpClient()..connectionTimeout = connectTimeout;
     try {
       final request = await client.getUrl(
@@ -137,7 +164,13 @@ class TransferReceiver {
       final StoredFile stored;
       try {
         stored = await storage.saveStream(
-          _tapped(response, sink),
+          _tapped(
+            response,
+            sink,
+            onProgress: onProgress,
+            cancelToken: cancelToken,
+            totalBytes: declaredLength,
+          ),
           fileName,
           expectedSize: declaredLength < 0 ? null : declaredLength,
         );
@@ -145,6 +178,12 @@ class TransferReceiver {
         // saveStream wraps source-stream errors; a transport failure must
         // surface as a connection failure, not storage (2E finding).
         final cause = e.cause;
+        if (cause is _CancelledException) {
+          return const DownloadFailure(
+            DownloadFailureKind.cancelled,
+            message: 'Download cancelled',
+          );
+        }
         if (cause is SocketException) {
           return DownloadFailure(DownloadFailureKind.connection,
               message: cause.message);
@@ -207,16 +246,41 @@ class TransferReceiver {
   /// hashing without buffering the whole file. Network errors are re-wrapped
   /// as [HttpException] so `saveStream`'s catch-all StorageException wrapping
   /// cannot misclassify a connection abort as a storage failure (2E finding).
-  Stream<List<int>> _tapped(Stream<List<int>> source, Sha256StreamSink sink) {
+  /// Also reports per-chunk progress and honours co-operative cancellation.
+  Stream<List<int>> _tapped(
+    Stream<List<int>> source,
+    Sha256StreamSink sink, {
+    void Function(int bytesReceived, int totalBytes)? onProgress,
+    TransferCancelToken? cancelToken,
+    required int totalBytes,
+  }) {
+    var received = 0;
     return source
         .map((chunk) {
+          final token = cancelToken;
+          if (token != null && token.isCancelled) {
+            throw _CancelledException();
+          }
           sink.add(chunk);
+          received += chunk.length;
+          onProgress?.call(received, totalBytes);
           return chunk;
         })
         .transform(StreamTransformer.fromHandlers(
           handleError: (Object e, StackTrace st, EventSink<List<int>> dst) {
+            if (e is _CancelledException) {
+              dst.addError(e);
+              dst.close();
+              return;
+            }
             dst.addError(HttpException(e.toString()));
           },
         ));
   }
+}
+
+/// Internal marker so cancellation survives `saveStream`'s StorageException
+/// wrapping and can be mapped back to a cancelled outcome.
+class _CancelledException implements Exception {
+  const _CancelledException();
 }

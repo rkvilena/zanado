@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'features/transfer/transfer_debug_screen.dart';
+import 'features/transfer/home_screen.dart';
 
-/// Home is the MVP 2 debug transfer screen; storage debug stays reachable via
-/// the app-bar folder action. Real transfer UI arrives in MVP 3.
+/// Home is the MVP 3 app shell (SEND / RECEIVE navigation). The storage
+/// debug screen stays reachable from the home app bar until MVP 5.
 class ZanadoApp extends StatelessWidget {
   const ZanadoApp({super.key});
 
@@ -12,7 +12,7 @@ class ZanadoApp extends StatelessWidget {
     return MaterialApp(
       title: 'Zanado',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)),
-      home: const TransferDebugScreen(),
+      home: const HomeScreen(),
     );
   }
 }

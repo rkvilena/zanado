@@ -32,6 +32,10 @@ class TransferServer {
   int? get port => _server?.port;
   bool get isRunning => _server != null;
 
+  /// True while the (single) receiver's download is in flight — surfaced so
+  /// the sender UI can show "connected" instead of just "waiting".
+  bool get receiverConnected => _receiverConnected;
+
   /// Binds to [_bindAddress] on an ephemeral port (port 0 → OS-assigned).
   Future<void> start() async {
     if (_server != null) return;

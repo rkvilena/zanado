@@ -50,6 +50,8 @@ void main() {
     expect(senderState.phase, SenderPhase.serving);
     expect(senderState.port, isNotNull);
     expect(senderState.token, isNotNull);
+    expect(senderState.fileSizeBytes, content.length);
+    expect(senderState.expiresAt, isNotNull);
 
     // Receiver: same path the UI uses.
     final receiver = container.read(receiverControllerProvider.notifier);
@@ -62,14 +64,19 @@ void main() {
     final receiverState = container.read(receiverControllerProvider);
     final outcome = receiverState.outcome;
     expect(outcome, isA<DownloadSuccess>());
+    // 3B: live progress must have tracked the full transfer.
+    expect(receiverState.bytesReceived, content.length);
+    expect(receiverState.totalBytes, content.length);
     final stored = (outcome as DownloadSuccess).file;
     expect(stored.name, 'payload.bin');
     expect(await File(stored.path).readAsBytes(), content);
 
-    // The one-shot sender must observe the terminal state shortly after.
+    // The one-shot sender must observe the terminal state shortly after,
+    // including the connected flag the 3A UI status row uses.
     await Future<void>.delayed(const Duration(milliseconds: 900));
-    expect(container.read(senderControllerProvider).phase,
-        SenderPhase.completed);
+    final after = container.read(senderControllerProvider);
+    expect(after.phase, SenderPhase.completed);
+    expect(after.receiverConnected, isTrue);
   });
 
   test('receiver controller surfaces sender rejection', () async {

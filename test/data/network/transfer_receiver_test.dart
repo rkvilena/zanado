@@ -64,6 +64,94 @@ void main() {
 
   Future<List<FileSystemEntity>> storedFiles() => storageDir.list().toList();
 
+  group('TransferReceiver progress & cancel (MVP 3 Phase 3B)', () {
+    test('reports monotonic byte progress with declared total', () async {
+      final content = 'x' * (1024 * 1024);
+      final server = await _serve(content, name: 'big.bin');
+      addTearDown(() async {
+        await server.stop();
+        await File(server.session.selectedFile.path).parent
+            .delete(recursive: true);
+      });
+
+      final events = <int, int>{};
+      final outcome = await receiver.download(
+        host: '127.0.0.1',
+        port: server.port!,
+        token: server.session.token,
+        onProgress: (received, total) => events[received] = total,
+      );
+
+      expect(outcome, isA<DownloadSuccess>());
+      expect(events, isNotEmpty);
+      expect(events.length, greaterThan(1), reason: '1 MB yields many chunks');
+      final totals = events.values.toSet();
+      expect(totals, everyElement(content.length));
+      final received = events.keys.toList();
+      expect(received.first, greaterThan(0));
+      expect(received.last, content.length);
+      final sorted = [...received]..sort();
+      expect(received, sorted, reason: 'progress must be monotonic');
+    });
+
+    test('cancel before download yields cancelled outcome', () async {
+      final content = 'tiny';
+      final server = await _serve(content);
+      addTearDown(() async {
+        await server.stop();
+        await File(server.session.selectedFile.path).parent
+            .delete(recursive: true);
+      });
+
+      final token = TransferCancelToken()..cancel();
+      final outcome = await receiver.download(
+        host: '127.0.0.1',
+        port: server.port!,
+        token: server.session.token,
+        cancelToken: token,
+      );
+
+      expect(outcome, isA<DownloadFailure>());
+      expect(
+        (outcome as DownloadFailure).kind,
+        DownloadFailureKind.cancelled,
+      );
+    });
+
+    test('cancel mid-transfer aborts and leaves no stored file', () async {
+      final content = 'x' * (1024 * 1024);
+      final server = await _serve(content, name: 'mid.bin');
+      addTearDown(() async {
+        await server.stop();
+        await File(server.session.selectedFile.path).parent
+            .delete(recursive: true);
+      });
+
+      final token = TransferCancelToken();
+      var progressCalls = 0;
+      final outcome = await receiver.download(
+        host: '127.0.0.1',
+        port: server.port!,
+        token: server.session.token,
+        cancelToken: token,
+        onProgress: (received, total) {
+          progressCalls++;
+          // Cancel as soon as the first chunk has arrived.
+          if (progressCalls == 1) token.cancel();
+        },
+      );
+
+      expect(progressCalls, greaterThanOrEqualTo(1));
+      expect(outcome, isA<DownloadFailure>());
+      expect(
+        (outcome as DownloadFailure).kind,
+        DownloadFailureKind.cancelled,
+      );
+      expect(await storedFiles(), isEmpty,
+          reason: 'cancelled download must not leave a stored file');
+    });
+  });
+
   group('TransferReceiver happy path', () {
     test('downloads, verifies, and commits the file', () async {
       final content = 'Zanado payload © ünïcode 123';
