@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/utils/bytes_format.dart';
+import '../../domain/models/transfer_payload.dart';
 import 'transfer_controller.dart';
 
 /// Sender workflow (MVP 3 Phase 3A): pick file → start serving → share the
@@ -80,6 +82,8 @@ class SenderScreen extends ConsumerWidget {
           ],
           if (serving) ...[
             const SizedBox(height: 12),
+            _QrCodeCard(state: state),
+            const SizedBox(height: 12),
             _ConnectionCodeCard(state: state),
             const SizedBox(height: 12),
             _ServingStatus(state: state),
@@ -121,6 +125,59 @@ class SenderScreen extends ConsumerWidget {
               ],
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _QrCodeCard extends StatelessWidget {
+  const _QrCodeCard({required this.state});
+
+  final SenderState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final host = state.lanAddress?.address;
+    final port = state.port;
+    final token = state.token;
+    final expiresAt = state.expiresAt;
+    if (host == null || port == null || token == null || expiresAt == null) {
+      return const SizedBox.shrink();
+    }
+
+    final payload = TransferPayload.fromSession(
+      host: host,
+      port: port,
+      token: token,
+      expiresAt: expiresAt,
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Receiver scans this to connect:',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.white,
+                child: QrImageView(
+                  data: payload.toUriString(),
+                  version: QrVersions.auto,
+                  size: 220,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
