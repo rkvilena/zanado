@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Shared visual tokens (MVP 5 Phase 5B-1). Single source of truth for
@@ -22,10 +23,37 @@ abstract final class ZanadoRadius {
   static const double card = 12;
 }
 
-/// Maximum width of the centered content column. Defined in 5B-1 as a token;
-/// applied to the Windows layout in 5B-3.
+/// Maximum width of the centered content column.
 abstract final class ZanadoLayout {
-  static const double maxContentWidth = 640;
+  // 720 px keeps the receiver's side-by-side Scan/Paste buttons on one row
+  // with room to spare; below the planned ~600–760 review range top end.
+  static const double maxContentWidth = 720;
+
+  /// Desktop width above which the receiver puts Sender IP and Port on one
+  /// row; below it the fields stack like the Android layout (narrow window).
+  static const double wideFormBreakpoint = 480;
+
+  /// Platform decides the composition (Windows = desktop layout, Android =
+  /// single-column touch layout); width only tunes details within it. Width
+  /// alone would let a wide tablet and a narrow desktop window swap designs.
+  static bool isWindowsDesktop(BuildContext context) =>
+      defaultTargetPlatform == TargetPlatform.windows;
+}
+
+/// Page-level action placement: a centered compact button on Windows desktop
+/// (no oversized mobile-style bars), full-width on Android for touch targets.
+class ZanadoPageAction extends StatelessWidget {
+  const ZanadoPageAction({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (ZanadoLayout.isWindowsDesktop(context)) {
+      return Center(child: child);
+    }
+    return SizedBox(width: double.infinity, child: child);
+  }
 }
 
 /// Semantic status colors. Centralized in 5B-1 (values identical to the

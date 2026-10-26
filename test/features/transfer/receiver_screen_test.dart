@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import 'package:zanado/domain/models/transfer_payload.dart';
 import 'package:zanado/features/transfer/qr_scanner_sheet.dart';
 import 'package:zanado/features/transfer/receiver_screen.dart';
 import 'package:zanado/features/transfer/transfer_controller.dart';
+import 'package:zanado/shared/visual_tokens.dart';
 
 /// Receiver workflow screen test (MVP 3 Phase 3B): form validation and busy
 /// rendering. Byte-level progress itself is covered by the engine
@@ -211,6 +213,89 @@ void main() {
 
     expect(find.text('Download'), findsOneWidget);
     expect(find.textContaining('Saved'), findsNothing);
+  });
+
+  group('platform-adaptive layout (5B-3)', () {
+    testWidgets('Windows wide window puts IP and Port on one row and centers Download',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ReceiverScreen())),
+      );
+
+      final ip = tester.getRect(find.widgetWithText(TextField, 'Sender IP'));
+      final port = tester.getRect(find.widgetWithText(TextField, 'Port'));
+      expect(port.left, greaterThan(ip.left));
+      expect(port.top, ip.top);
+
+      final download = find.byType(FilledButton);
+      expect(tester.getSize(download).width,
+          lessThan(ZanadoLayout.maxContentWidth / 2));
+      // Centered page-level action, not a stretched mobile bar.
+      expect(tester.getTopLeft(download).dx,
+          greaterThan(ZanadoSpacing.l));
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('Windows narrow window stacks IP and Port like the Android form',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ReceiverScreen())),
+      );
+
+      final ip = tester.getRect(find.widgetWithText(TextField, 'Sender IP'));
+      final port = tester.getRect(find.widgetWithText(TextField, 'Port'));
+      expect(port.top, greaterThan(ip.top));
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('Android keeps the stacked full-width touch layout', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ReceiverScreen())),
+      );
+
+      final ip = tester.getRect(find.widgetWithText(TextField, 'Sender IP'));
+      final port = tester.getRect(find.widgetWithText(TextField, 'Port'));
+      expect(port.top, greaterThan(ip.top));
+
+      final download = find.byType(FilledButton);
+      expect(tester.getSize(download).width,
+          ZanadoLayout.maxContentWidth - ZanadoSpacing.l * 2);
+      // Scan and Paste stack full-width, not side-by-side compact.
+      expect(
+          tester.getTopLeft(find.text('Paste connection code')).dy,
+          greaterThan(
+              tester.getTopLeft(find.text('Scan QR code')).dy));
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('a wide window constrains the receiver content column',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ReceiverScreen())),
+      );
+
+      final card = tester.getSize(find.byType(Card).first);
+      expect(card.width, ZanadoLayout.maxContentWidth - ZanadoSpacing.l * 2);
+    });
   });
 
   group('QR scanning (MVP 4 Phase 4C)', () {

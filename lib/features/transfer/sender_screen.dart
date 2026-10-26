@@ -27,9 +27,14 @@ class SenderScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Send a file')),
-      body: ListView(
-        padding: ZanadoSpacing.screen,
-        children: [
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: ZanadoLayout.maxContentWidth,
+          ),
+          child: ListView(
+            padding: ZanadoSpacing.screen,
+            children: [
           Card(
             child: Padding(
               padding: ZanadoSpacing.card,
@@ -59,10 +64,10 @@ class SenderScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: ZanadoSpacing.m),
-                  SizedBox(
-                    width: double.infinity,
+                  ZanadoPageAction(
                     child: FilledButton.icon(
-                      onPressed: busy || preparing ? null : controller.pickFile,
+                      onPressed:
+                          busy || preparing ? null : controller.pickFile,
                       icon: busy || preparing
                           ? const SizedBox(
                               width: 18,
@@ -86,8 +91,7 @@ class SenderScreen extends ConsumerWidget {
           ],
           if (state.fileName != null && !serving && !preparing) ...[
             const SizedBox(height: ZanadoSpacing.m),
-            SizedBox(
-              width: double.infinity,
+            ZanadoPageAction(
               child: FilledButton.icon(
                 onPressed: busy ? null : controller.startServing,
                 icon: const Icon(Icons.wifi_tethering),
@@ -139,7 +143,9 @@ class SenderScreen extends ConsumerWidget {
                 ),
               ],
             ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

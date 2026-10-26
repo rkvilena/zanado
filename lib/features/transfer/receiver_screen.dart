@@ -81,12 +81,35 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(receiverControllerProvider);
     final controller = ref.read(receiverControllerProvider.notifier);
+    final desktop = ZanadoLayout.isWindowsDesktop(context);
+    final wideForm =
+        MediaQuery.sizeOf(context).width >= ZanadoLayout.wideFormBreakpoint;
+
+    final scanButton = OutlinedButton.icon(
+      onPressed: () => showQrScannerSheet(
+        context,
+        onCodeScanned: _applyCode,
+        cameraBuilder: ref.read(qrCameraBuilderProvider),
+      ),
+      icon: const Icon(Icons.qr_code_scanner),
+      label: const Text('Scan QR code'),
+    );
+    final pasteButton = OutlinedButton.icon(
+      onPressed: _pasteCode,
+      icon: const Icon(Icons.content_paste),
+      label: const Text('Paste connection code'),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Receive a file')),
-      body: ListView(
-        padding: ZanadoSpacing.screen,
-        children: [
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: ZanadoLayout.maxContentWidth,
+          ),
+          child: ListView(
+            padding: ZanadoSpacing.screen,
+            children: [
           Card(
             child: Padding(
               padding: ZanadoSpacing.card,
@@ -98,56 +121,85 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: ZanadoSpacing.s),
-                  TextField(
-                    controller: _host,
-                    keyboardType: TextInputType.url,
-                    decoration:
-                        const InputDecoration(labelText: 'Sender IP'),
-                  ),
-                  const SizedBox(height: ZanadoSpacing.s),
-                  TextField(
-                    controller: _port,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Port'),
-                  ),
+                  if (desktop && wideForm) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _host,
+                            keyboardType: TextInputType.url,
+                            decoration: const InputDecoration(
+                              labelText: 'Sender IP',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: ZanadoSpacing.m),
+                        SizedBox(
+                          width: 120,
+                          child: TextField(
+                            controller: _port,
+                            keyboardType: TextInputType.number,
+                            decoration:
+                                const InputDecoration(labelText: 'Port'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    TextField(
+                      controller: _host,
+                      keyboardType: TextInputType.url,
+                      decoration:
+                          const InputDecoration(labelText: 'Sender IP'),
+                    ),
+                    const SizedBox(height: ZanadoSpacing.s),
+                    TextField(
+                      controller: _port,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Port'),
+                    ),
+                  ],
                   const SizedBox(height: ZanadoSpacing.s),
                   TextField(
                     controller: _token,
                     decoration:
                         const InputDecoration(labelText: 'Token'),
+                    // Desktop ergonomics: Enter in the last field starts the
+                    // download (same controller call as the Download button,
+                    // so validation/errors are identical).
+                    onSubmitted: (_) => controller
+                        .download(_host.text, _port.text, _token.text),
                   ),
+                  if (!state.busy) ...[
+                    const SizedBox(height: ZanadoSpacing.m),
+                    // Windows: side-by-side compact methods inside the card
+                    // (agreed desktop composition); Android and narrow Windows
+                    // windows keep stacked full-width touch targets.
+                    desktop && wideForm
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              scanButton,
+                              const SizedBox(width: ZanadoSpacing.m),
+                              pasteButton,
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              scanButton,
+                              const SizedBox(height: ZanadoSpacing.m),
+                              pasteButton,
+                            ],
+                          ),
+                  ],
                 ],
               ),
             ),
           ),
           const SizedBox(height: ZanadoSpacing.m),
-          if (!state.busy) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => showQrScannerSheet(
-                  context,
-                  onCodeScanned: _applyCode,
-                  cameraBuilder: ref.read(qrCameraBuilderProvider),
-                ),
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Scan QR code'),
-              ),
-            ),
-            const SizedBox(height: ZanadoSpacing.m),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _pasteCode,
-                icon: const Icon(Icons.content_paste),
-                label: const Text('Paste connection code'),
-              ),
-            ),
-          ],
-          const SizedBox(height: ZanadoSpacing.m),
           if (!state.busy)
-            SizedBox(
-              width: double.infinity,
+            ZanadoPageAction(
               child: FilledButton.icon(
                 onPressed: () =>
                     controller.download(_host.text, _port.text, _token.text),
@@ -158,8 +210,7 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
           if (state.busy) ...[
             _ProgressCard(state: state),
             const SizedBox(height: ZanadoSpacing.m),
-            SizedBox(
-              width: double.infinity,
+            ZanadoPageAction(
               child: OutlinedButton.icon(
                 onPressed: controller.cancel,
                 icon: const Icon(Icons.cancel_outlined),
@@ -174,8 +225,7 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
                 (state.outcome! as DownloadFailure).kind !=
                     DownloadFailureKind.cancelled) ...[
               const SizedBox(height: ZanadoSpacing.m),
-              SizedBox(
-                width: double.infinity,
+              ZanadoPageAction(
                 child: FilledButton.tonalIcon(
                   onPressed: controller.retry,
                   icon: const Icon(Icons.refresh),
@@ -185,8 +235,7 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
             ],
             if (state.outcome is DownloadSuccess) ...[
               const SizedBox(height: ZanadoSpacing.m),
-              SizedBox(
-                width: double.infinity,
+              ZanadoPageAction(
                 child: OutlinedButton.icon(
                   onPressed: controller.reset,
                   icon: const Icon(Icons.playlist_add),
@@ -205,7 +254,9 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
                 ),
               ],
             ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
