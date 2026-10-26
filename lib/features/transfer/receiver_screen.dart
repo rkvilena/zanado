@@ -85,11 +85,11 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Receive a file')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.screen,
         children: [
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: ZanadoSpacing.card,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -97,18 +97,20 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
                     'Enter the sender\u2019s connection code:',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: ZanadoSpacing.s),
                   TextField(
                     controller: _host,
                     keyboardType: TextInputType.url,
                     decoration:
                         const InputDecoration(labelText: 'Sender IP'),
                   ),
+                  const SizedBox(height: ZanadoSpacing.s),
                   TextField(
                     controller: _port,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Port'),
                   ),
+                  const SizedBox(height: ZanadoSpacing.s),
                   TextField(
                     controller: _token,
                     decoration:
@@ -118,60 +120,78 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: ZanadoSpacing.m),
           if (!state.busy) ...[
-            OutlinedButton.icon(
-              onPressed: () => showQrScannerSheet(
-                context,
-                onCodeScanned: _applyCode,
-                cameraBuilder: ref.read(qrCameraBuilderProvider),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => showQrScannerSheet(
+                  context,
+                  onCodeScanned: _applyCode,
+                  cameraBuilder: ref.read(qrCameraBuilderProvider),
+                ),
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan QR code'),
               ),
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan QR code'),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _pasteCode,
-              icon: const Icon(Icons.content_paste),
-              label: const Text('Paste connection code'),
+            const SizedBox(height: ZanadoSpacing.m),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _pasteCode,
+                icon: const Icon(Icons.content_paste),
+                label: const Text('Paste connection code'),
+              ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: ZanadoSpacing.m),
           if (!state.busy)
-            FilledButton.icon(
-              onPressed: () =>
-                  controller.download(_host.text, _port.text, _token.text),
-              icon: const Icon(Icons.download),
-              label: const Text('Download'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () =>
+                    controller.download(_host.text, _port.text, _token.text),
+                icon: const Icon(Icons.download),
+                label: const Text('Download'),
+              ),
             ),
           if (state.busy) ...[
             _ProgressCard(state: state),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: controller.cancel,
-              icon: const Icon(Icons.cancel_outlined),
-              label: const Text('Cancel download'),
+            const SizedBox(height: ZanadoSpacing.m),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: controller.cancel,
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Cancel download'),
+              ),
             ),
           ],
           if (state.outcome != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             _OutcomeBanner(outcome: state.outcome!),
             if (state.outcome is DownloadFailure &&
                 (state.outcome! as DownloadFailure).kind !=
                     DownloadFailureKind.cancelled) ...[
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: controller.retry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try again'),
+              const SizedBox(height: ZanadoSpacing.m),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: controller.retry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'),
+                ),
               ),
             ],
             if (state.outcome is DownloadSuccess) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: controller.reset,
-                icon: const Icon(Icons.playlist_add),
-                label: const Text('Receive another file'),
+              const SizedBox(height: ZanadoSpacing.m),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: controller.reset,
+                  icon: const Icon(Icons.playlist_add),
+                  label: const Text('Receive another file'),
+                ),
               ),
             ],
           ],
@@ -209,14 +229,14 @@ class _ProgressCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.card,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 const Icon(Icons.download, size: 20),
-                const SizedBox(width: 8),
+                const SizedBox(width: ZanadoSpacing.s),
                 Expanded(
                   child: Text(
                     known
@@ -231,7 +251,7 @@ class _ProgressCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: ZanadoSpacing.m),
             LinearProgressIndicator(value: value),
           ],
         ),

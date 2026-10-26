@@ -28,18 +28,18 @@ class SenderScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Send a file')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.screen,
         children: [
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: ZanadoSpacing.card,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       const Icon(Icons.file_open),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: ZanadoSpacing.m),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,44 +58,51 @@ class SenderScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: busy || preparing ? null : controller.pickFile,
-                    icon: busy || preparing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.file_open),
-                    label: Text(state.fileName == null
-                        ? 'Pick a file to send'
-                        : 'Pick a different file'),
+                  const SizedBox(height: ZanadoSpacing.m),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: busy || preparing ? null : controller.pickFile,
+                      icon: busy || preparing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.file_open),
+                      label: Text(state.fileName == null
+                          ? 'Pick a file to send'
+                          : 'Pick a different file'),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           if (preparing) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             _PreparingCard(state: state),
           ],
           if (state.fileName != null && !serving && !preparing) ...[
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: busy ? null : controller.startServing,
-              icon: const Icon(Icons.wifi_tethering),
-              label: const Text('Start transfer'),
+            const SizedBox(height: ZanadoSpacing.m),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: busy ? null : controller.startServing,
+                icon: const Icon(Icons.wifi_tethering),
+                label: const Text('Start transfer'),
+              ),
             ),
           ],
           if (serving) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             _QrCodeCard(state: state),
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             _ConnectionCodeCard(state: state),
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             _ServingStatus(state: state),
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             OutlinedButton.icon(
               onPressed: controller.stop,
               icon: const Icon(Icons.cancel_outlined),
@@ -115,7 +122,7 @@ class SenderScreen extends ConsumerWidget {
                   color: ZanadoStatusColors.danger,
                   text: 'Transfer failed — the receiver did not complete it.',
                 ),
-          const SizedBox(height: 12),
+          const SizedBox(height: ZanadoSpacing.m),
           FilledButton.tonalIcon(
             onPressed: controller.stop,
             icon: const Icon(Icons.restart_alt),
@@ -158,21 +165,21 @@ class _PreparingCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.card,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 const Icon(Icons.enhanced_encryption, size: 20),
-                const SizedBox(width: 8),
+                const SizedBox(width: ZanadoSpacing.s),
                 Expanded(
                   child: Text('Preparing file…',
                       style: Theme.of(context).textTheme.titleSmall),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: ZanadoSpacing.s),
             Text(
               'Verifying “${state.fileName}” with a checksum before the '
               'transfer starts.',
@@ -213,7 +220,7 @@ class _QrCodeCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.card,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -222,10 +229,10 @@ class _QrCodeCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleSmall,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: ZanadoSpacing.m),
             Center(
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: ZanadoSpacing.banner,
                 color: Colors.white,
                 child: QrImageView(
                   data: payload.toUriString(),
@@ -273,7 +280,7 @@ class _ConnectionCodeCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.card,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -281,7 +288,7 @@ class _ConnectionCodeCard extends StatelessWidget {
               'Enter this code on the receiving device:',
               style: Theme.of(context).textTheme.titleSmall,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: ZanadoSpacing.s),
             _CodeRow(
               label: 'IP',
               value: host ?? 'resolving…',
@@ -330,7 +337,7 @@ class _CodeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: ZanadoSpacing.xs),
       child: Row(
         children: [
           SizedBox(
@@ -374,7 +381,7 @@ class _ServingStatus extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.card,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -383,7 +390,7 @@ class _ServingStatus extends StatelessWidget {
                 connected
                     ? const Icon(Icons.link, color: ZanadoStatusColors.success)
                     : const Icon(Icons.hourglass_empty),
-                const SizedBox(width: 12),
+                const SizedBox(width: ZanadoSpacing.m),
                 Expanded(
                   child: Text(
                     connected
@@ -393,7 +400,7 @@ class _ServingStatus extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: ZanadoSpacing.s),
             Text(
               expiry == null
                   ? ''

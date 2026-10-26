@@ -115,6 +115,37 @@ void main() {
     expect(find.text('Enter the sender IP, port, and token.'), findsOneWidget);
   });
 
+  // MVP 5 Phase 5B-2 action hierarchy: Download is the primary action
+  // (FilledButton); QR scan and paste are secondary (OutlinedButton).
+  testWidgets('idle state shows Download as primary and scan/paste as secondary',
+      (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: ReceiverScreen())),
+    );
+
+    expect(
+      find.ancestor(
+        of: find.text('Download'),
+        matching: find.byType(FilledButton),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.text('Scan QR code'),
+        matching: find.byType(OutlinedButton),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.text('Paste connection code'),
+        matching: find.byType(OutlinedButton),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('busy state shows progress card, bytes, and cancel button',
       (tester) async {
     await tester.pumpWidget(
@@ -158,9 +189,11 @@ void main() {
 
     // 3C: expired-token rejection gets recovery guidance, not a raw code.
     expect(find.textContaining('session expired'), findsOneWidget);
-    expect(find.text('Try again'), findsOneWidget);
+    // Full-width action buttons (5B-2) can scroll it offstage on the small
+    // default test surface — same convention as the checksum-failure test.
+    expect(find.text('Try again', skipOffstage: false), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Try again'));
+    await tester.ensureVisible(find.text('Try again', skipOffstage: false));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try again'));
     await tester.pump();

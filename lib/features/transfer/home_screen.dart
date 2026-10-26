@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/visual_tokens.dart';
 import '../storage/storage_debug_screen.dart';
 import 'receiver_screen.dart';
 import 'sender_screen.dart';
@@ -26,29 +27,36 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _ModeCard(
-              icon: Icons.upload_rounded,
-              title: 'Send',
-              subtitle: 'Share a file from this device',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SenderScreen()),
-              ),
+        padding: ZanadoSpacing.screen,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: ZanadoLayout.maxContentWidth,
             ),
-            const SizedBox(height: 16),
-            _ModeCard(
-              icon: Icons.download_rounded,
-              title: 'Receive',
-              subtitle: 'Get a file from another device',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ReceiverScreen()),
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ModeCard(
+                  icon: Icons.upload_rounded,
+                  title: 'Send',
+                  subtitle: 'Share a file from this device',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SenderScreen()),
+                  ),
+                ),
+                const SizedBox(height: ZanadoSpacing.l),
+                _ModeCard(
+                  icon: Icons.download_rounded,
+                  title: 'Receive',
+                  subtitle: 'Get a file from another device',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ReceiverScreen()),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -72,10 +80,10 @@ class _ModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ZanadoRadius.card),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: ZanadoSpacing.card,
           child: Row(
             children: [
               Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),

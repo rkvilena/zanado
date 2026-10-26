@@ -71,6 +71,27 @@ void main() {
     expect(find.byType(QrImageView), findsNothing);
   });
 
+  // MVP 5 Phase 5B-2: pick-file is the screen's primary action (FilledButton),
+  // and no start action exists before a file is chosen.
+  testWidgets('idle state shows a primary pick-file action and no start action',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          senderControllerProvider.overrideWith(_IdleSenderController.new),
+        ],
+        child: const MaterialApp(home: SenderScreen()),
+      ),
+    );
+
+    final pickButton = find.ancestor(
+      of: find.text('Pick a file to send'),
+      matching: find.byType(FilledButton),
+    );
+    expect(pickButton, findsOneWidget);
+    expect(find.text('Start transfer'), findsNothing);
+  });
+
   testWidgets('serving state copies the full connection code to the clipboard',
       (tester) async {
     String? copied;
