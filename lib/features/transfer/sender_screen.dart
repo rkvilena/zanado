@@ -20,6 +20,7 @@ class SenderScreen extends ConsumerWidget {
     final state = ref.watch(senderControllerProvider);
     final controller = ref.read(senderControllerProvider.notifier);
     final busy = state.phase == SenderPhase.busy;
+    final preparing = state.phase == SenderPhase.preparing;
     final serving = state.phase == SenderPhase.serving;
 
     return Scaffold(
@@ -57,8 +58,8 @@ class SenderScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
-                    onPressed: busy ? null : controller.pickFile,
-                    icon: busy
+                    onPressed: busy || preparing ? null : controller.pickFile,
+                    icon: busy || preparing
                         ? const SizedBox(
                             width: 18,
                             height: 18,
@@ -73,7 +74,11 @@ class SenderScreen extends ConsumerWidget {
               ),
             ),
           ),
-          if (state.fileName != null && !serving) ...[
+          if (preparing) ...[
+            const SizedBox(height: 12),
+            _PreparingCard(state: state),
+          ],
+          if (state.fileName != null && !serving && !preparing) ...[
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: busy ? null : controller.startServing,
@@ -126,6 +131,57 @@ class SenderScreen extends ConsumerWidget {
               ],
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Sender hashing wait made visible (MVP 5 Phase 5A): a determinate progress
+/// bar over the streamed sha-256 computation, indeterminate only when the
+/// file size could not be read beforehand.
+class _PreparingCard extends StatelessWidget {
+  const _PreparingCard({required this.state});
+
+  final SenderState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = state.fileSizeBytes;
+    final hashed = state.hashedBytes;
+    final known = total != null && total > 0 && hashed >= 0;
+    final value = known ? (hashed / total).clamp(0.0, 1.0) : null;
+    final label = known
+        ? 'Hashing ${formatBytes(hashed)} of ${formatBytes(total)}…'
+        : 'Hashing…';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.enhanced_encryption, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Preparing file…',
+                      style: Theme.of(context).textTheme.titleSmall),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Verifying “${state.fileName}” with a checksum before the '
+              'transfer starts.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(value: value),
+            const SizedBox(height: 6),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
       ),
     );
   }

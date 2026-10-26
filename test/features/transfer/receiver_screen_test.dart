@@ -41,6 +41,24 @@ class _StubReceiver extends TransferReceiver {
   }
 }
 
+/// MVP 5 Phase 5A stub: ends immediately with a checksum-mismatch failure so
+/// the dedicated failure card can be checked.
+class _ChecksumFailReceiver extends _StubReceiver {
+  @override
+  Future<DownloadOutcome> download({
+    required String host,
+    required int port,
+    required String token,
+    void Function(int bytesReceived, int totalBytes)? onProgress,
+    TransferCancelToken? cancelToken,
+  }) async {
+    return const DownloadFailure(
+      DownloadFailureKind.checksumMismatch,
+      message: 'sha-256 mismatch: expected a*64, got b*64',
+    );
+  }
+}
+
 /// 3C: first attempt fails with an expired session, the retry succeeds with a
 /// duplicate-renamed file, exercising the full recovery path.
 class _ScriptedReceiver extends TransferReceiver {
@@ -270,6 +288,31 @@ void main() {
       expect(find.byType(QrScannerSheet), findsNothing);
       expect(find.textContaining('Connection code filled'), findsNothing);
     });
+  });
+
+  testWidgets('checksum failure shows the dedicated verification-failed card',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transferReceiverProvider.overrideWithValue(_ChecksumFailReceiver()),
+        ],
+        child: const MaterialApp(home: ReceiverScreen()),
+      ),
+    );
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Sender IP'), '192.168.1.5');
+    await tester.enterText(find.widgetWithText(TextField, 'Port'), '1234');
+    await tester.enterText(find.widgetWithText(TextField, 'Token'), 'TOKEN');
+    await tester.tap(find.text('Download'));
+    await tester.pump();
+
+    expect(find.text('File verification failed'), findsOneWidget);
+    expect(find.textContaining('has been discarded'), findsOneWidget);
+    expect(find.textContaining('sha-256 mismatch'), findsOneWidget);
+    // The retry button sits below the fold in the scroll view.
+    expect(find.text('Try again', skipOffstage: false), findsOneWidget);
   });
 
   group('paste connection code (Phase 4D)', () {

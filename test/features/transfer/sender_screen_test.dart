@@ -30,6 +30,17 @@ class _IdleSenderController extends SenderController {
   SenderState build() => const SenderState();
 }
 
+/// MVP 5 Phase 5A stub: mid-hashing state, 1 MB hashed of a 4 MB file.
+class _PreparingSenderController extends SenderController {
+  @override
+  SenderState build() => SenderState(
+        phase: SenderPhase.preparing,
+        fileName: 'movie.mkv',
+        fileSizeBytes: 4 * (1 << 20),
+        hashedBytes: 1 << 20,
+      );
+}
+
 void main() {
   testWidgets('serving state renders the QR card with the transfer payload',
       (tester) async {
@@ -107,5 +118,22 @@ void main() {
     );
 
     expect(find.text('Copy full connection code'), findsNothing);
+  });
+
+  testWidgets('preparing state shows the hashing card and no start button',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          senderControllerProvider.overrideWith(_PreparingSenderController.new),
+        ],
+        child: const MaterialApp(home: SenderScreen()),
+      ),
+    );
+
+    expect(find.text('Preparing file…'), findsOneWidget);
+    expect(find.textContaining('Hashing'), findsOneWidget);
+    expect(find.text('movie.mkv'), findsOneWidget);
+    expect(find.text('Start transfer'), findsNothing);
   });
 }

@@ -12,14 +12,17 @@ import '../../data/storage/storage_providers.dart';
 import '../../domain/models/selected_file.dart';
 import '../../domain/models/transfer_session.dart';
 
-/// Sender-side debug state (Phase 2D).
-enum SenderPhase { idle, busy, ready, serving, completed, failed }
+/// Sender-side debug state (Phase 2D). `preparing` (MVP 5 Phase 5A) is the
+/// sha-256 hashing wait after file selection — previously a silent `busy`
+/// wait that read as frozen on large files.
+enum SenderPhase { idle, busy, preparing, ready, serving, completed, failed }
 
 class SenderState {
   const SenderState({
     this.phase = SenderPhase.idle,
     this.fileName,
     this.fileSizeBytes,
+    this.hashedBytes = 0,
     this.lanAddress,
     this.port,
     this.token,
@@ -31,6 +34,10 @@ class SenderState {
   final SenderPhase phase;
   final String? fileName;
   final int? fileSizeBytes;
+
+  /// Bytes already fed into the streaming sha-256 while [SenderPhase.preparing];
+  /// drives the determinate "Preparing file…" progress against [fileSizeBytes].
+  final int hashedBytes;
 
   /// What the receiver must enter: host, port, token.
   final InternetAddress? lanAddress;
@@ -49,6 +56,7 @@ class SenderState {
     SenderPhase? phase,
     String? fileName,
     int? fileSizeBytes,
+    int? hashedBytes,
     InternetAddress? lanAddress,
     int? port,
     String? token,
@@ -63,6 +71,7 @@ class SenderState {
         fileName: fileName ?? this.fileName,
         fileSizeBytes:
             clearConnection ? null : (fileSizeBytes ?? this.fileSizeBytes),
+        hashedBytes: clearConnection ? 0 : (hashedBytes ?? this.hashedBytes),
         lanAddress: clearConnection ? null : (lanAddress ?? this.lanAddress),
         port: clearConnection ? null : (port ?? this.port),
         token: clearConnection ? null : (token ?? this.token),
@@ -76,6 +85,10 @@ class SenderState {
 
 /// Drives the sender flow: pick file → session + server → track terminal state.
 class SenderController extends Notifier<SenderState> {
+  /// Hash-progress reporting granularity: state updates are throttled so
+  /// per-chunk callbacks (64 KiB chunks on a multi-GB file) don't flood the UI.
+  static const _hashReportInterval = 1 << 20;
+
   TransferServer? _server;
   Timer? _poll;
   SelectedFile? _selected;
@@ -88,6 +101,8 @@ class SenderController extends Notifier<SenderState> {
 
   /// Picks a file and computes its REAL byte size + streamed sha-256 —
   /// string-length metadata breaks the HTTP Content-Length contract (2B lesson).
+  /// The hashing pass is user-visible (`preparing`) with progress, not a
+  /// silent wait (MVP 5 Phase 5A).
   Future<void> pickFile() async {
     state = const SenderState(phase: SenderPhase.busy);
     try {
@@ -98,22 +113,35 @@ class SenderController extends Notifier<SenderState> {
         return;
       }
       final file = File(path);
+      final total = await file.length();
+      state = SenderState(
+        phase: SenderPhase.preparing,
+        fileName: files.first.name,
+        fileSizeBytes: total,
+      ).copyWith(clearConnection: true, clearError: true);
       final hash = ChecksumUtils.startStreaming();
-      var size = 0;
+      var hashed = 0;
+      var lastReported = 0;
       await for (final chunk in file.openRead()) {
         hash.add(chunk);
-        size += chunk.length;
+        hashed += chunk.length;
+        // Large files emit many small chunks; reporting every chunk would
+        // flood the UI thread, so throttle to ~1 MiB granularity.
+        if (hashed - lastReported >= _hashReportInterval) {
+          lastReported = hashed;
+          state = state.copyWith(hashedBytes: hashed);
+        }
       }
       _selected = SelectedFile(
         name: files.first.name,
         path: path,
-        sizeBytes: size,
+        sizeBytes: hashed,
         sha256: hash.finalize(),
       );
       state = SenderState(
         phase: SenderPhase.ready,
         fileName: files.first.name,
-        fileSizeBytes: size,
+        fileSizeBytes: hashed,
       ).copyWith(clearConnection: true, clearError: true);
     } catch (e) {
       _selected = null;

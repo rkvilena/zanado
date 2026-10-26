@@ -110,7 +110,10 @@ class TransferReceiver {
   /// [onProgress] fires once per received chunk with the running byte count;
   /// `totalBytes` is the declared Content-Length, or -1 when the sender did
   /// not declare one. Optional [cancelToken] enables co-operative
-  /// cancellation (MVP 3 Phase 3B).
+  /// cancellation (MVP 3 Phase 3B). No stage callbacks: the streamed sha-256
+  /// is computed per chunk (MVP 5A revision), so the only post-download wait
+  /// is disk flush/rename inside the storage layer — no honest UI state
+  /// exists for it.
   Future<DownloadOutcome> download({
     required String host,
     required int port,

@@ -279,6 +279,11 @@ class _OutcomeBanner extends StatelessWidget {
               '${renamed ? ' (renamed — "${s.wireFileName}" already existed)' : ''}',
         );
       case final DownloadFailure f:
+        // MVP 5 Phase 5A: checksum failure gets a dedicated, unmissable card
+        // — the file was discarded, not saved.
+        if (f.kind == DownloadFailureKind.checksumMismatch) {
+          return _ChecksumFailureCard(message: f.message);
+        }
         final (icon, color, text) = switch (f.kind) {
           DownloadFailureKind.cancelled => (
             Icons.cancel_outlined,
@@ -318,6 +323,51 @@ class _OutcomeBanner extends StatelessWidget {
         };
         return _Banner(icon: icon, color: color, text: text);
     }
+  }
+}
+
+/// MVP 5 Phase 5A: explicit checksum-failure state. The corrupt bytes were
+/// discarded (temporary/committed file removed), so nothing partial is shown
+/// as complete and the user must retry to get the file.
+class _ChecksumFailureCard extends StatelessWidget {
+  const _ChecksumFailureCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: Colors.red.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.report, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('File verification failed',
+                      style: theme.textTheme.titleSmall?.copyWith(color: Colors.red)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The received file did not match the sender\u2019s checksum and '
+              'has been discarded — nothing was saved. Try the transfer again.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
+            Text(message,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontFamily: 'monospace')),
+          ],
+        ),
+      ),
+    );
   }
 }
 
