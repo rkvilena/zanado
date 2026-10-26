@@ -9,6 +9,8 @@ import 'package:zanado/data/network/transfer_receiver.dart';
 import 'package:zanado/data/storage/local_storage_repository.dart';
 import 'package:zanado/core/constants/transfer_protocol.dart';
 import 'package:zanado/domain/models/stored_file.dart';
+import 'package:zanado/domain/models/transfer_payload.dart';
+import 'package:zanado/features/transfer/qr_scanner_sheet.dart';
 import 'package:zanado/features/transfer/receiver_screen.dart';
 import 'package:zanado/features/transfer/transfer_controller.dart';
 
@@ -153,5 +155,115 @@ void main() {
 
     expect(find.text('Download'), findsOneWidget);
     expect(find.textContaining('Saved'), findsNothing);
+  });
+
+  group('QR scanning (MVP 4 Phase 4C)', () {
+    // Fake camera surface: a button that "scans" the given code. Keeps every
+    // QR test off the real camera plugin (no platform channels in tests).
+    QrCameraBuilder fakeCamera(String raw) =>
+        (context, onCodeScanned) => FilledButton(
+              onPressed: () => onCodeScanned(raw),
+              child: const Text('Simulate scan'),
+            );
+
+    Future<void> pumpWithCamera(WidgetTester tester, String raw) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            qrCameraBuilderProvider.overrideWithValue(fakeCamera(raw)),
+          ],
+          child: const MaterialApp(home: ReceiverScreen()),
+        ),
+      );
+      await tester.tap(find.text('Scan QR code'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Simulate scan'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+    }
+
+    String validUri() => TransferPayload.fromSession(
+          host: '192.168.1.7',
+          port: 54321,
+          token: 'TOKEN1234',
+          expiresAt: DateTime.now().add(const Duration(hours: 1)),
+        ).toUriString();
+
+    testWidgets('a valid code prefills the connection form', (tester) async {
+      await pumpWithCamera(tester, validUri());
+
+      expect(find.widgetWithText(TextField, 'Sender IP'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Sender IP'),
+        ).controller!.text,
+        '192.168.1.7',
+      );
+      expect(
+        tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Port'),
+        ).controller!.text,
+        '54321',
+      );
+      expect(
+        tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Token'),
+        ).controller!.text,
+        'TOKEN1234',
+      );
+      expect(find.textContaining('Connection code filled'), findsOneWidget);
+      expect(find.byType(QrScannerSheet), findsNothing);
+    });
+
+    testWidgets('an expired code shows recovery guidance', (tester) async {
+      final expired = TransferPayload.fromSession(
+        host: '192.168.1.7',
+        port: 54321,
+        token: 'TOKEN1234',
+        expiresAt: DateTime.now().subtract(const Duration(hours: 1)),
+      ).toUriString();
+      await pumpWithCamera(tester, expired);
+
+      expect(find.textContaining('session has expired'), findsOneWidget);
+      // Nothing was filled — the dead code must not look usable.
+      expect(
+        tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Sender IP'),
+        ).controller!.text,
+        isEmpty,
+      );
+    });
+
+    testWidgets('a non-Zanado code is rejected with an explanation',
+        (tester) async {
+      await pumpWithCamera(tester, 'https://example.com/transfer');
+
+      expect(find.textContaining('not a valid Zanado'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(
+          find.widgetWithText(TextField, 'Sender IP'),
+        ).controller!.text,
+        isEmpty,
+      );
+    });
+
+    testWidgets('Enter manually closes the sheet without touching the form',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            qrCameraBuilderProvider.overrideWithValue(fakeCamera(validUri())),
+          ],
+          child: const MaterialApp(home: ReceiverScreen()),
+        ),
+      );
+      await tester.tap(find.text('Scan QR code'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enter manually'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QrScannerSheet), findsNothing);
+      expect(find.textContaining('Connection code filled'), findsNothing);
+    });
   });
 }

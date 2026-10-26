@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- MVP 2: LAN file transfer uses plain HTTP over the local Wi-Fi network. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- MVP 4 Phase 4C: the receiver scans the sender's connection QR code. -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <application
         android:label="zanado"
         android:name="${applicationName}"

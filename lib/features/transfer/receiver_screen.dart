@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/transfer_protocol.dart';
 import '../../core/utils/bytes_format.dart';
 import '../../data/network/transfer_receiver.dart';
+import '../../domain/models/transfer_payload.dart';
+import 'qr_scanner_sheet.dart';
 import 'transfer_controller.dart';
 
 /// Receiver workflow (MVP 3 Phase 3B): manual connection entry → live
@@ -27,6 +29,33 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
     _port.dispose();
     _token.dispose();
     super.dispose();
+  }
+
+  /// Exhaustive switch over the Phase 4A parse result: valid codes prefill
+  /// the manual form, expired ones point at recovery, malformed ones explain
+  /// why nothing was filled.
+  void _applyScannedCode(String raw) {
+    final result = TransferPayload.parse(raw);
+    switch (result) {
+      case final TransferPayloadValid valid:
+        _host.text = valid.payload.host;
+        _port.text = '${valid.payload.port}';
+        _token.text = valid.payload.token;
+        _showSnack('Connection code filled — verify it and download.');
+      case final TransferPayloadExpired _:
+        _showSnack(
+          'That session has expired. Ask the sender to start a new transfer.',
+        );
+      case final TransferPayloadMalformed _:
+        _showSnack('The scanned code is not a valid Zanado transfer code.');
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -70,6 +99,17 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          if (!state.busy)
+            OutlinedButton.icon(
+              onPressed: () => showQrScannerSheet(
+                context,
+                onCodeScanned: _applyScannedCode,
+                cameraBuilder: ref.read(qrCameraBuilderProvider),
+              ),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan QR code'),
+            ),
           const SizedBox(height: 12),
           if (!state.busy)
             FilledButton.icon(

@@ -39,6 +39,7 @@ dependencies:
   flutter_riverpod: ^3.4.3
   crypto: ^3.0.3
   qr_flutter: ^4.1.0
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:
