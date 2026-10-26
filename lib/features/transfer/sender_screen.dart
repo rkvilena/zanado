@@ -8,9 +8,10 @@ import '../../domain/models/transfer_payload.dart';
 import 'transfer_controller.dart';
 
 /// Sender workflow (MVP 3 Phase 3A): pick file → start serving → share the
-/// connection code (manual copy; QR is MVP 4) → live status + expiry
-/// countdown → cancel. Progress here is session-state only by design — the
-/// sender serves bytes and does not track receiver-side progress.
+/// connection code (QR + per-row copy, full-code copy added in Phase 4D) →
+/// live status + expiry countdown → cancel. Progress here is session-state
+/// only by design — the sender serves bytes and does not track receiver-side
+/// progress.
 class SenderScreen extends ConsumerWidget {
   const SenderScreen({super.key});
 
@@ -197,6 +198,21 @@ class _ConnectionCodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final host = state.lanAddress?.address;
+    final port = state.port;
+    final token = state.token;
+    final expiresAt = state.expiresAt;
+    final payloadReady =
+        host != null && port != null && token != null && expiresAt != null;
+    final fullCode = payloadReady
+        ? TransferPayload.fromSession(
+            host: host,
+            port: port,
+            token: token,
+            expiresAt: expiresAt,
+          ).toUriString()
+        : null;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -210,19 +226,31 @@ class _ConnectionCodeCard extends StatelessWidget {
             const SizedBox(height: 8),
             _CodeRow(
               label: 'IP',
-              value: state.lanAddress?.address ?? 'resolving…',
+              value: host ?? 'resolving…',
               onCopy: (v) => _copy(context, 'IP', v),
             ),
             _CodeRow(
               label: 'Port',
-              value: '${state.port ?? '?'}',
+              value: '${port ?? '?'}',
               onCopy: (v) => _copy(context, 'Port', v),
             ),
             _CodeRow(
               label: 'Token',
-              value: state.token ?? '?',
+              value: token ?? '?',
               onCopy: (v) => _copy(context, 'Token', v),
             ),
+            // Phase 4D: one-tap copy of the entire payload so a desktop
+            // receiver can paste it instead of retyping three fields.
+            if (fullCode != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _copy(context, 'Full connection code',
+                      fullCode),
+                  icon: const Icon(Icons.copy_all, size: 18),
+                  label: const Text('Copy full connection code'),
+                ),
+              ),
           ],
         ),
       ),

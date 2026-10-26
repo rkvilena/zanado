@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/transfer_protocol.dart';
@@ -33,8 +34,9 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
 
   /// Exhaustive switch over the Phase 4A parse result: valid codes prefill
   /// the manual form, expired ones point at recovery, malformed ones explain
-  /// why nothing was filled.
-  void _applyScannedCode(String raw) {
+  /// why nothing was filled. Shared by the QR scanner and the paste button
+  /// (Phase 4D) so both inputs behave identically.
+  void _applyCode(String raw) {
     final result = TransferPayload.parse(raw);
     switch (result) {
       case final TransferPayloadValid valid:
@@ -56,6 +58,21 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Phase 4D: Windows-friendly pairing — the sender's full connection code
+  /// can be copied once and pasted here, no camera required.
+  Future<void> _pasteCode() async {
+    final data = await Clipboard.getData('text/plain');
+    final raw = data?.text;
+    if (raw == null || raw.trim().isEmpty) {
+      _showSnack(
+        'The clipboard is empty — copy the sender\u2019s full connection '
+        'code first.',
+      );
+      return;
+    }
+    _applyCode(raw);
   }
 
   @override
@@ -100,16 +117,23 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          if (!state.busy)
+          if (!state.busy) ...[
             OutlinedButton.icon(
               onPressed: () => showQrScannerSheet(
                 context,
-                onCodeScanned: _applyScannedCode,
+                onCodeScanned: _applyCode,
                 cameraBuilder: ref.read(qrCameraBuilderProvider),
               ),
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('Scan QR code'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _pasteCode,
+              icon: const Icon(Icons.content_paste),
+              label: const Text('Paste connection code'),
+            ),
+          ],
           const SizedBox(height: 12),
           if (!state.busy)
             FilledButton.icon(

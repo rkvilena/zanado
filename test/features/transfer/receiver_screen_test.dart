@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -141,6 +142,8 @@ void main() {
     expect(find.textContaining('session expired'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Try again'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Try again'));
     await tester.pump();
 
@@ -150,6 +153,8 @@ void main() {
     expect(find.text('Receive another file'), findsOneWidget);
 
     // Return-to-start clears the result and shows the form again.
+    await tester.ensureVisible(find.text('Receive another file'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Receive another file'));
     await tester.pump();
 
@@ -264,6 +269,88 @@ void main() {
 
       expect(find.byType(QrScannerSheet), findsNothing);
       expect(find.textContaining('Connection code filled'), findsNothing);
+    });
+  });
+
+  group('paste connection code (Phase 4D)', () {
+    String validUri() => TransferPayload.fromSession(
+          host: '192.168.1.7',
+          port: 54321,
+          token: 'TOKEN1234',
+          expiresAt: DateTime.now().add(const Duration(hours: 1)),
+        ).toUriString();
+
+    Future<void> pumpScreen(WidgetTester tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ReceiverScreen())),
+      );
+    }
+
+    void setClipboard(WidgetTester tester, String? text) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.getData') {
+            return text == null ? null : <String, Object?>{'text': text};
+          }
+          return null;
+        },
+      );
+    }
+
+    String formHost(WidgetTester tester) => tester
+        .widget<TextField>(find.widgetWithText(TextField, 'Sender IP'))
+        .controller!
+        .text;
+
+    testWidgets('a valid pasted code prefills the connection form',
+        (tester) async {
+      await pumpScreen(tester);
+      setClipboard(tester, validUri());
+
+      await tester.tap(find.text('Paste connection code'));
+      await tester.pump();
+
+      expect(formHost(tester), '192.168.1.7');
+      expect(
+        tester
+            .widget<TextField>(find.widgetWithText(TextField, 'Port'))
+            .controller!
+            .text,
+        '54321',
+      );
+      expect(
+        tester
+            .widget<TextField>(find.widgetWithText(TextField, 'Token'))
+            .controller!
+            .text,
+        'TOKEN1234',
+      );
+      expect(find.textContaining('Connection code filled'), findsOneWidget);
+    });
+
+    testWidgets('a pasted non-Zanado string is rejected with an explanation',
+        (tester) async {
+      await pumpScreen(tester);
+      setClipboard(tester, 'https://example.com/transfer');
+
+      await tester.tap(find.text('Paste connection code'));
+      await tester.pump();
+
+      expect(find.textContaining('not a valid Zanado'), findsOneWidget);
+      expect(formHost(tester), isEmpty);
+    });
+
+    testWidgets('an empty clipboard explains what to do instead',
+        (tester) async {
+      await pumpScreen(tester);
+      setClipboard(tester, null);
+
+      await tester.tap(find.text('Paste connection code'));
+      await tester.pump();
+
+      expect(find.textContaining('clipboard is empty'), findsOneWidget);
+      expect(formHost(tester), isEmpty);
     });
   });
 }
