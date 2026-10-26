@@ -6,6 +6,8 @@ import '../../core/constants/transfer_protocol.dart';
 import '../../core/utils/bytes_format.dart';
 import '../../data/network/transfer_receiver.dart';
 import '../../domain/models/transfer_payload.dart';
+import '../../shared/status_banner.dart';
+import '../../shared/visual_tokens.dart';
 import 'qr_scanner_sheet.dart';
 import 'transfer_controller.dart';
 
@@ -271,9 +273,9 @@ class _OutcomeBanner extends StatelessWidget {
       case final DownloadSuccess s:
         final renamed = s.wireFileName.isNotEmpty &&
             s.wireFileName != s.file.name;
-        return _Banner(
+        return StatusBanner(
           icon: Icons.check_circle,
-          color: Colors.green,
+          color: ZanadoStatusColors.success,
           text: 'Saved "${s.file.name}" (${formatBytes(s.file.sizeBytes)}) — '
               'checksum verified'
               '${renamed ? ' (renamed — "${s.wireFileName}" already existed)' : ''}',
@@ -287,41 +289,41 @@ class _OutcomeBanner extends StatelessWidget {
         final (icon, color, text) = switch (f.kind) {
           DownloadFailureKind.cancelled => (
             Icons.cancel_outlined,
-            Colors.orange,
+            ZanadoStatusColors.warning,
             'Transfer cancelled.'
           ),
           DownloadFailureKind.connection => (
             Icons.error,
-            Colors.red,
+            ZanadoStatusColors.danger,
             'Connection failed: ${f.message}'
           ),
           DownloadFailureKind.protocol => (
             Icons.error,
-            Colors.red,
+            ZanadoStatusColors.danger,
             'Sender violated the transfer protocol: ${f.message}'
           ),
           DownloadFailureKind.rejectedBySender => (
             Icons.block,
-            Colors.red,
+            ZanadoStatusColors.danger,
             _rejectionText(f.errorCode, f.message)
           ),
           DownloadFailureKind.sizeMismatch => (
             Icons.error,
-            Colors.red,
+            ZanadoStatusColors.danger,
             'Incomplete download (size mismatch): ${f.message}'
           ),
           DownloadFailureKind.checksumMismatch => (
             Icons.warning,
-            Colors.red,
+            ZanadoStatusColors.danger,
             'File was corrupt and has been discarded: ${f.message}'
           ),
           DownloadFailureKind.storage => (
             Icons.error,
-            Colors.red,
+            ZanadoStatusColors.danger,
             'Could not save the file: ${f.message}'
           ),
         };
-        return _Banner(icon: icon, color: color, text: text);
+        return StatusBanner(icon: icon, color: color, text: text);
     }
   }
 }
@@ -338,61 +340,33 @@ class _ChecksumFailureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      color: Colors.red.withValues(alpha: 0.08),
+      color: ZanadoStatusColors.danger.withValues(alpha: 0.08),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: ZanadoSpacing.card,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.report, color: Colors.red),
-                const SizedBox(width: 8),
+                const Icon(Icons.report, color: ZanadoStatusColors.danger),
+                const SizedBox(width: ZanadoSpacing.s),
                 Expanded(
                   child: Text('File verification failed',
-                      style: theme.textTheme.titleSmall?.copyWith(color: Colors.red)),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                          color: ZanadoStatusColors.danger)),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: ZanadoSpacing.s),
             Text(
               'The received file did not match the sender\u2019s checksum and '
               'has been discarded — nothing was saved. Try the transfer again.',
               style: theme.textTheme.bodySmall,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: ZanadoSpacing.xs),
             Text(message,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(fontFamily: 'monospace')),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Banner extends StatelessWidget {
-  const _Banner({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: color.withValues(alpha: 0.08),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 8),
-            Expanded(child: Text(text)),
           ],
         ),
       ),

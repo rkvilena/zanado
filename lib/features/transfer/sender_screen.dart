@@ -5,6 +5,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/utils/bytes_format.dart';
 import '../../domain/models/transfer_payload.dart';
+import '../../shared/status_banner.dart';
+import '../../shared/visual_tokens.dart';
 import 'transfer_controller.dart';
 
 /// Sender workflow (MVP 3 Phase 3A): pick file → start serving → share the
@@ -103,14 +105,14 @@ class SenderScreen extends ConsumerWidget {
           if (state.phase == SenderPhase.completed ||
             state.phase == SenderPhase.failed) ...[
           state.phase == SenderPhase.completed
-              ? const _StatusBanner(
+              ? const StatusBanner(
                   icon: Icons.check_circle,
-                  color: Colors.green,
+                  color: ZanadoStatusColors.success,
                   text: 'Transfer completed — the receiver saved the file.',
                 )
-              : const _StatusBanner(
+              : const StatusBanner(
                   icon: Icons.error,
-                  color: Colors.red,
+                  color: ZanadoStatusColors.danger,
                   text: 'Transfer failed — the receiver did not complete it.',
                 ),
           const SizedBox(height: 12),
@@ -379,7 +381,7 @@ class _ServingStatus extends StatelessWidget {
             Row(
               children: [
                 connected
-                    ? const Icon(Icons.link, color: Colors.green)
+                    ? const Icon(Icons.link, color: ZanadoStatusColors.success)
                     : const Icon(Icons.hourglass_empty),
                 const SizedBox(width: 12),
                 Expanded(
@@ -411,34 +413,5 @@ class _ServingStatus extends StatelessWidget {
     final minutes = total ~/ 60;
     final seconds = total % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-}
-
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: color.withValues(alpha: 0.08),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 8),
-            Expanded(child: Text(text)),
-          ],
-        ),
-      ),
-    );
   }
 }

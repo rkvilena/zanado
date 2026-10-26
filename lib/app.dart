@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'shared/visual_tokens.dart';
 import 'features/transfer/home_screen.dart';
 
 /// Home is the MVP 3 app shell (SEND / RECEIVE navigation). The storage
@@ -11,7 +12,7 @@ class ZanadoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Zanado',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)),
+      theme: buildZanadoTheme(),
       home: const HomeScreen(),
     );
   }
