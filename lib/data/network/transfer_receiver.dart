@@ -7,6 +7,10 @@ import '../../core/utils/checksum.dart';
 import '../../domain/models/stored_file.dart';
 import '../../domain/repositories/storage_repository.dart';
 
+// RC-03 diagnostic phase markers removed 2026-10-28 after the ANR fix was
+// device-verified (synchronous multi-GB MediaStore copy moved off the main
+// thread in MainActivity.kt).
+
 /// Result of a receiver download attempt (Phase 2C).
 sealed class DownloadOutcome {
   const DownloadOutcome();

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/checksum.dart';
@@ -342,6 +343,9 @@ class ReceiverController extends Notifier<ReceiverState> {
       if (outcome is DownloadSuccess) {
         // The file is fully committed; refresh any mounted storage screen.
         ref.read(storageListRevisionProvider.notifier).bump();
+      } else if (outcome is DownloadFailure) {
+        debugPrint(
+            'transfer: download failed kind=${outcome.kind} msg=${outcome.message}');
       }
       state = state.copyWith(
         busy: false,
@@ -349,6 +353,8 @@ class ReceiverController extends Notifier<ReceiverState> {
         speedBytesPerSec: 0,
       );
     } catch (e) {
+      // Unexpected errors (bugs) are not a modeled download failure state;
+      // surface them like any other receiver error.
       state = ReceiverState(error: 'Unexpected error: $e');
     } finally {
       _cancel = null;
