@@ -31,6 +31,7 @@ class StorageListController extends AsyncNotifier<StorageListState> {
 
   @override
   Future<StorageListState> build() async {
+    ref.watch(storageListRevisionProvider);
     return StorageListState(files: await _repo.list());
   }
 
@@ -82,8 +83,13 @@ class StorageListController extends AsyncNotifier<StorageListState> {
       );
 }
 
+/// AutoDispose: the storage screen's list must be re-fetched every time the
+/// screen is opened. Transfers commit through the same repository outside
+/// this provider (storageRepositoryProvider is shared), so a keepAlive
+/// provider would show a stale list until the app restarted or a delete
+/// triggered a manual reload.
 final storageListControllerProvider =
-    AsyncNotifierProvider<StorageListController, StorageListState>(
+    AsyncNotifierProvider.autoDispose<StorageListController, StorageListState>(
   StorageListController.new,
 );
 

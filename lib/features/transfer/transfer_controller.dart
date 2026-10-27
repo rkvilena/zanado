@@ -339,6 +339,10 @@ class ReceiverController extends Notifier<ReceiverState> {
             onProgress: _onProgress,
             cancelToken: _cancel,
           );
+      if (outcome is DownloadSuccess) {
+        // The file is fully committed; refresh any mounted storage screen.
+        ref.read(storageListRevisionProvider.notifier).bump();
+      }
       state = state.copyWith(
         busy: false,
         outcome: outcome,

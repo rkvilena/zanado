@@ -359,4 +359,97 @@ void main() {
       client1.close();
     });
   });
+
+  group('RC-08: receiver idle timeout (stalled connection)', () {
+    Future<TransferReceiver> shortIdleReceiver() async {
+      final dir = await Directory.systemTemp.createTemp('zanado_6_dst_');
+      dirs.add(dir);
+      return TransferReceiver(
+        storage: LocalStorageRepository(baseDirectory: dir),
+        idleTimeout: const Duration(milliseconds: 300),
+      );
+    }
+
+    List<String> leftovers(String dirPath) => Directory(dirPath)
+        .listSync()
+        .map((e) => e.path)
+        .where((p) => p.endsWith('.part'))
+        .toList();
+
+    test('sender never sends headers → connection failure, not a hang',
+        () async {
+      final receiver = await shortIdleReceiver();
+      final storageDir = receiver.storage as LocalStorageRepository;
+      final stallServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      stallServer.listen((request) {
+        // Deliberately never respond — simulates a half-open connection.
+      });
+      addTearDown(() => stallServer.close(force: true));
+
+      final outcome = await receiver.download(
+        host: '127.0.0.1',
+        port: stallServer.port,
+        token: 'AAAA2222AAAA2222AAAA2222',
+      );
+
+      expect(outcome, isA<DownloadFailure>());
+      final failure = outcome as DownloadFailure;
+      expect(failure.kind, DownloadFailureKind.connection);
+      expect(failure.message, contains('No response'));
+      expect(storageDir.directoryPath(), isNotNull);
+    });
+
+    test('sender stalls mid-transfer → connection failure, .part cleaned',
+        () async {
+      final receiver = await shortIdleReceiver();
+      final storageDir = receiver.storage as LocalStorageRepository;
+      final stallServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      stallServer.listen((request) {
+        request.response.headers
+          ..set(
+            TransferProtocol.fileNameHeader,
+            Uri.encodeComponent('photo.jpg'),
+          )
+          ..set(TransferProtocol.checksumHeader, _shaA);
+        request.response.statusCode = TransferProtocol.statusOk;
+        request.response.contentLength = 1000;
+        request.response.add(List<int>.filled(600, 65));
+        request.response.flush();
+        // Deliberately never complete — the connection stalls here.
+      });
+      addTearDown(() => stallServer.close(force: true));
+
+      final outcome = await receiver.download(
+        host: '127.0.0.1',
+        port: stallServer.port,
+        token: 'AAAA2222AAAA2222AAAA2222',
+      );
+
+      expect(outcome, isA<DownloadFailure>());
+      final failure = outcome as DownloadFailure;
+      expect(failure.kind, DownloadFailureKind.connection);
+      expect(failure.message, contains('No data received'));
+      // No completed file and no .part left behind.
+      final dirPath = await storageDir.directoryPath();
+      expect(leftovers(dirPath), isEmpty);
+      expect(await storageDir.list(), isEmpty);
+    });
+  });
+
+  group('RC-08: stale .part sweep', () {
+    test('cleanupStaleParts removes leftover .part files only', () async {
+      final dir = await Directory.systemTemp.createTemp('zanado_6_sweep_');
+      final part = File('${dir.path}${Platform.pathSeparator}photo.jpg.part');
+      await part.writeAsString('leftover');
+      final done = File('${dir.path}${Platform.pathSeparator}photo.jpg');
+      await done.writeAsString('done');
+
+      final repo = LocalStorageRepository(baseDirectory: dir);
+      await repo.cleanupStaleParts();
+
+      expect(part.existsSync(), isFalse);
+      expect(done.existsSync(), isTrue);
+      await dir.delete(recursive: true);
+    });
+  });
 }

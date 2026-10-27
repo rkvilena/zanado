@@ -119,7 +119,8 @@ class SenderScreen extends ConsumerWidget {
               ? const StatusBanner(
                   icon: Icons.check_circle,
                   color: ZanadoStatusColors.success,
-                  text: 'Transfer completed — the receiver saved the file.',
+                  text: 'Transfer finished — the receiver may still be saving '
+                      'the file. Check its library to confirm.',
                 )
               : const StatusBanner(
                   icon: Icons.error,

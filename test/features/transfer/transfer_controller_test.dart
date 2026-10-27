@@ -11,6 +11,7 @@ import 'package:zanado/data/storage/local_storage_repository.dart';
 import 'package:zanado/data/storage/storage_providers.dart';
 import 'package:zanado/domain/models/selected_file.dart';
 import 'package:zanado/domain/models/transfer_session.dart';
+import 'package:zanado/features/storage/storage_controller.dart';
 import 'package:zanado/features/transfer/transfer_controller.dart';
 
 /// Controller-level integration proof for Phase 2D: real picker bypass
@@ -71,6 +72,14 @@ void main() {
     expect(stored.name, 'payload.bin');
     expect(await File(stored.path).readAsBytes(), content);
 
+    // The storage screen's list must reflect the committed file immediately —
+    // no restart or manual delete needed.
+    final storageList = await container.read(storageListControllerProvider.future);
+    expect(
+      storageList.files.map((f) => f.name),
+      contains('payload.bin'),
+    );
+
     // The one-shot sender must observe the terminal state shortly after,
     // including the connected flag the 3A UI status row uses.
     await Future<void>.delayed(const Duration(milliseconds: 900));
@@ -106,12 +115,25 @@ void main() {
     addTearDown(server.stop);
 
     final receiver = container.read(receiverControllerProvider.notifier);
+
+    // The storage list starts empty and must stay empty after a failed
+    // receive — no refresh is triggered by a rejected download.
+    final sub = container.listen(storageListControllerProvider, (_, _) {});
+    expect(
+      (await container.read(storageListControllerProvider.future)).files,
+      isEmpty,
+    );
+    final revisionBefore =
+        container.read(storageListRevisionProvider);
+
     await receiver.download('127.0.0.1', '${server.port}', 'WRONGWRONGWRONG');
 
     final outcome = container.read(receiverControllerProvider).outcome;
     expect(outcome, isA<DownloadFailure>());
     expect((outcome as DownloadFailure).kind,
         DownloadFailureKind.rejectedBySender);
+    expect(container.read(storageListRevisionProvider), revisionBefore);
+    sub.close();
   });
 }
 

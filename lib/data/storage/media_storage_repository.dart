@@ -162,4 +162,16 @@ class MediaStorageRepository implements StorageRepository {
       if (file.existsSync()) file.deleteSync();
     } catch (_) {/* best effort */}
   }
+
+  /// Removes `.part` staging files left by a killed process; the receiver's
+  /// error-path cleanup never ran in that case. Called at startup before any
+  /// transfer, so every `.part` in the staging directory is stale.
+  Future<void> cleanupStaleParts() async {
+    if (!_staging.existsSync()) return;
+    await for (final entity in _staging.list()) {
+      if (entity is File && entity.path.endsWith(_partSuffix)) {
+        _deleteQuietly(entity);
+      }
+    }
+  }
 }

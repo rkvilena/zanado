@@ -154,6 +154,20 @@ class LocalStorageRepository implements StorageRepository {
 
   static const _partSuffix = '.part';
 
+  /// Removes `.part` files left by a killed process (e.g. the receiver was
+  /// terminated mid-download and its error-path cleanup never ran). Called at
+  /// startup before any transfer; no transfer is active, so any `.part` here
+  /// is stale.
+  Future<void> cleanupStaleParts() async {
+    final dir = _ensureDir();
+    if (!dir.existsSync()) return;
+    await for (final entity in dir.list()) {
+      if (entity is File && entity.path.endsWith(_partSuffix)) {
+        _cleanupQuietly(entity.path);
+      }
+    }
+  }
+
   static void _cleanupQuietly(String path) {
     try {
       final f = File(path);

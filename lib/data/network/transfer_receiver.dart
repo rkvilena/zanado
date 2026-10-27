@@ -102,10 +102,17 @@ class TransferReceiver {
   TransferReceiver({
     required this.storage,
     this.connectTimeout = const Duration(seconds: 10),
+    this.idleTimeout = const Duration(seconds: 30),
   });
 
   final StorageRepository storage;
   final Duration connectTimeout;
+
+  /// Max gap between received body chunks (and the wait for the response
+  /// headers). A stalled/half-open connection — e.g. Wi-Fi dropped mid-transfer
+  /// — never produces a socket error, so without this the receiver would hang
+  /// on the download loop until the user manually aborts (RC-08).
+  final Duration idleTimeout;
 
   /// [onProgress] fires once per received chunk with the running byte count;
   /// `totalBytes` is the declared Content-Length, or -1 when the sender did
@@ -135,7 +142,11 @@ class TransferReceiver {
       request.headers
         ..set(TransferProtocol.versionHeader, '${TransferProtocol.version}')
         ..set(TransferProtocol.tokenHeader, token);
-      final response = await request.close();
+      final response = await request.close().timeout(idleTimeout, onTimeout: () {
+        throw _IdleTimeoutException(
+          'No response from the sender within ${idleTimeout.inSeconds}s',
+        );
+      });
 
       if (response.statusCode != TransferProtocol.statusOk) {
         final code = await _errorCodeFrom(response);
@@ -174,7 +185,7 @@ class TransferReceiver {
       try {
         stored = await storage.saveStream(
           _tapped(
-            response,
+            _idleWatched(response),
             sink,
             onProgress: onProgress,
             cancelToken: cancelToken,
@@ -232,9 +243,24 @@ class TransferReceiver {
       return DownloadFailure(DownloadFailureKind.connection, message: e.message);
     } on HttpException catch (e) {
       return DownloadFailure(DownloadFailureKind.connection, message: e.message);
+    } on _IdleTimeoutException catch (e) {
+      return DownloadFailure(DownloadFailureKind.connection, message: e.message);
     } finally {
       client.close(force: true);
     }
+  }
+
+  Stream<List<int>> _idleWatched(Stream<List<int>> body) {
+    return body.timeout(
+      idleTimeout,
+      onTimeout: (sink) {
+        sink.addError(
+          _IdleTimeoutException(
+            'No data received from the sender for ${idleTimeout.inSeconds}s',
+          ),
+        );
+      },
+    );
   }
 
   /// Reads the JSON error body of a non-200 response and maps it to a
@@ -283,6 +309,12 @@ class TransferReceiver {
               dst.close();
               return;
             }
+            if (e is _IdleTimeoutException) {
+              // Re-wrapped so the storage layer's catch-all maps it to a
+              // connection failure (2E finding), not storage.
+              dst.addError(HttpException(e.message));
+              return;
+            }
             dst.addError(HttpException(e.toString()));
           },
         ));
@@ -293,4 +325,13 @@ class TransferReceiver {
 /// wrapping and can be mapped back to a cancelled outcome.
 class _CancelledException implements Exception {
   const _CancelledException();
+}
+
+/// Internal marker for a body/header idle-timeout breach; mapped to a
+/// `DownloadFailureKind.connection` outcome.
+class _IdleTimeoutException implements Exception {
+  const _IdleTimeoutException(this.message);
+  final String message;
+  @override
+  String toString() => message;
 }
