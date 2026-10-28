@@ -1,6 +1,6 @@
-/// Wire contract between the sender server (Phase 2B) and the receiver
-/// downloader (Phase 2C). Both sides must agree on these names/values; a
-/// change here is a protocol change and requires updating both phases.
+/// Wire contract between the sender server and the receiver downloader. Both
+/// sides must agree on these names/values; a change here is a protocol change
+/// and requires updating both sides.
 class TransferProtocol {
   TransferProtocol._();
 
@@ -20,7 +20,7 @@ class TransferProtocol {
   /// represented as a 64-char lowercase hex string.
   static const String checksumAlgorithm = 'sha-256';
 
-  /// Response headers (additive extension, Phase 2B): the sender echoes the
+  /// Response headers (additive extension): the sender echoes the
   /// file's integrity metadata so the receiver can verify the download
   /// without a second request. The name header carries a percent-encoded
   /// UTF-8 name (non-ASCII names must survive the wire).

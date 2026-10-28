@@ -15,7 +15,7 @@ import java.io.IOException
 import java.util.concurrent.Executors
 
 /**
- * Zanado storage channel (MVP 1.1 — user-visible storage).
+ * Zanado storage channel (user-visible storage).
  *
  * Saves files into the PUBLIC Downloads directory under `Download/zanado/`
  * using MediaStore, so they are visible to the system file manager and other
@@ -36,7 +36,7 @@ class MainActivity : FlutterActivity() {
 
     // MediaStore publication copies the whole file (multi-GB) synchronously;
     // on the main thread this blocked the UI long enough for Android to raise
-    // an ANR (RC-03: "MainThread worked timeout" after a 3.56 GB receive).
+    // an ANR ("MainThread worked timeout" after a 3.56 GB receive).
     // All publish work therefore runs on a dedicated background executor.
     private val publishExecutor = Executors.newSingleThreadExecutor()
     // MethodChannel results must be delivered on the main thread.

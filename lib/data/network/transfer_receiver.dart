@@ -7,11 +7,7 @@ import '../../core/utils/checksum.dart';
 import '../../domain/models/stored_file.dart';
 import '../../domain/repositories/storage_repository.dart';
 
-// RC-03 diagnostic phase markers removed 2026-10-28 after the ANR fix was
-// device-verified (synchronous multi-GB MediaStore copy moved off the main
-// thread in MainActivity.kt).
-
-/// Result of a receiver download attempt (Phase 2C).
+/// Result of a receiver download attempt.
 sealed class DownloadOutcome {
   const DownloadOutcome();
 }
@@ -82,7 +78,7 @@ class DownloadFailure extends DownloadOutcome {
       'DownloadFailure($kind, ${errorCode?.wireName}, $message)';
 }
 
-/// Co-operative cancellation handle for a receiver download (MVP 3 Phase 3B).
+/// Co-operative cancellation handle for a receiver download.
 /// The receiver checks it between chunks; cancelling aborts the stream and
 /// yields a `DownloadFailureKind.cancelled` outcome.
 class TransferCancelToken {
@@ -93,8 +89,8 @@ class TransferCancelToken {
   void cancel() => _cancelled = true;
 }
 
-/// Receiver-side downloader (Phase 2C, Module B): fetches one file from a
-/// sender `TransferServer` over the Phase 2A contract and commits it through
+/// Receiver-side downloader: fetches one file from a
+/// sender `TransferServer` over the wire contract and commits it through
 /// the storage abstraction.
 ///
 /// Flow: request with token + protocol headers → non-200 mapped to
@@ -115,14 +111,14 @@ class TransferReceiver {
   /// Max gap between received body chunks (and the wait for the response
   /// headers). A stalled/half-open connection — e.g. Wi-Fi dropped mid-transfer
   /// — never produces a socket error, so without this the receiver would hang
-  /// on the download loop until the user manually aborts (RC-08).
+  /// on the download loop until the user manually aborts.
   final Duration idleTimeout;
 
   /// [onProgress] fires once per received chunk with the running byte count;
   /// `totalBytes` is the declared Content-Length, or -1 when the sender did
   /// not declare one. Optional [cancelToken] enables co-operative
-  /// cancellation (MVP 3 Phase 3B). No stage callbacks: the streamed sha-256
-  /// is computed per chunk (MVP 5A revision), so the only post-download wait
+  /// cancellation. No stage callbacks: the streamed sha-256
+  /// is computed per chunk, so the only post-download wait
   /// is disk flush/rename inside the storage layer — no honest UI state
   /// exists for it.
   Future<DownloadOutcome> download({

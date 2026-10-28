@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'storage_controller.dart';
 
-/// Temporary debug screen for MVP 1 — exercises select / save / list / delete
-/// on-device. Will be replaced by real transfer UI in MVP 3.
+/// Exercises select / save / list / delete on-device.
 class StorageDebugScreen extends ConsumerWidget {
   const StorageDebugScreen({super.key});
 
@@ -42,7 +41,7 @@ class StorageDebugScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Zanado — Storage (MVP 1 debug)')),
+      appBar: AppBar(title: const Text('Zanado — Storage')),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

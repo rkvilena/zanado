@@ -1,6 +1,6 @@
 import 'dart:io';
 
-/// Picks the device's LAN address to advertise to a receiver (Phase 2D).
+/// Picks the device's LAN address to advertise to a receiver.
 ///
 /// The sender binds anyIPv4, so this selection only affects what we DISPLAY.
 /// Rank order: 192.168/16 (typical home Wi-Fi), 10/8, 172.16/12, then any

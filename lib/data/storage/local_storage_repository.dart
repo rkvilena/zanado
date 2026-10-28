@@ -5,7 +5,7 @@ import '../../core/utils/filename.dart';
 import '../../domain/models/stored_file.dart';
 import '../../domain/repositories/storage_repository.dart';
 
-/// Local file storage backed by the app's documents directory (Module A).
+/// Local file storage backed by the app's documents directory.
 ///
 /// Write strategy: every save first writes to a `.part` temporary file and
 /// renames it into place only after the write completes — a partial/interrupted

@@ -26,7 +26,7 @@ class TransferToken {
   }
 
   /// Structural validation for a token received from a peer. Does NOT check
-  /// whether a session exists — that is the sender server's job (Phase 2B).
+  /// whether a session exists — that is the sender server's job.
   static bool isValidFormat(String? token) {
     if (token == null || token.length < 8 || token.length > 64) return false;
     for (final c in token.codeUnits) {

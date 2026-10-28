@@ -22,8 +22,8 @@ class StorageListRevision extends Notifier<int> {
 final storageListRevisionProvider =
     NotifierProvider<StorageListRevision, int>(StorageListRevision.new);
 
-/// Resolves the platform-appropriate USER-VISIBLE storage (MVP 1.1,
-/// SHAREit-like) and exposes the concrete repository. This is the composition
+/// Resolves the platform-appropriate USER-VISIBLE storage (SHAREit-like)
+/// and exposes the concrete repository. This is the composition
 /// root wiring (features depend only on the `StorageRepository` interface).
 final storageRepositoryProvider = Provider<StorageRepository>((ref) {
   throw UnimplementedError(
@@ -40,7 +40,7 @@ final storageRepositoryProvider = Provider<StorageRepository>((ref) {
 ///
 /// Leftover `.part` files from a previously killed process are swept at
 /// startup: only one transfer runs at a time, so every `.part` present here
-/// is stale (RC-08: zero-byte artifacts after a killed receiver).
+/// is stale (zero-byte artifacts after a killed receiver).
 Future<StorageRepository> createStorageRepository() async {
   if (Platform.isAndroid) {
     final staging = await getTemporaryDirectory();

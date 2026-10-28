@@ -9,8 +9,8 @@ import '../../shared/status_banner.dart';
 import '../../shared/visual_tokens.dart';
 import 'transfer_controller.dart';
 
-/// Sender workflow (MVP 3 Phase 3A): pick file → start serving → share the
-/// connection code (QR + per-row copy, full-code copy added in Phase 4D) →
+/// Sender workflow: pick file → start serving → share the
+/// connection code (QR + per-row copy, full-code copy) →
 /// live status + expiry countdown → cancel. Progress here is session-state
 /// only by design — the sender serves bytes and does not track receiver-side
 /// progress.
@@ -152,7 +152,7 @@ class SenderScreen extends ConsumerWidget {
   }
 }
 
-/// Sender hashing wait made visible (MVP 5 Phase 5A): a determinate progress
+/// Sender hashing wait made visible: a determinate progress
 /// bar over the streamed sha-256 computation, indeterminate only when the
 /// file size could not be read beforehand.
 class _PreparingCard extends StatelessWidget {
@@ -311,7 +311,7 @@ class _ConnectionCodeCard extends StatelessWidget {
               value: token ?? '?',
               onCopy: (v) => _copy(context, 'Token', v),
             ),
-            // Phase 4D: one-tap copy of the entire payload so a desktop
+            // One-tap copy of the entire payload so a desktop
             // receiver can paste it instead of retyping three fields.
             if (fullCode != null)
               Align(

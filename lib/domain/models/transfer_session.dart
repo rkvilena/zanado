@@ -7,7 +7,7 @@ enum TransferSessionStatus { active, completed, failed, expired, cancelled }
 
 /// An authenticated, short-lived offer to download one file.
 ///
-/// Pure domain object: the sender server (Phase 2B) hosts it, the receiver
+/// Pure domain object: the sender server hosts it, the receiver
 /// learns about it through the pairing payload (host/port/token), and every
 /// request must present [token] in the [TransferProtocol.tokenHeader].
 class TransferSession {

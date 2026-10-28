@@ -13,7 +13,7 @@ import '../../data/storage/storage_providers.dart';
 import '../../domain/models/selected_file.dart';
 import '../../domain/models/transfer_session.dart';
 
-/// Sender-side debug state (Phase 2D). `preparing` (MVP 5 Phase 5A) is the
+/// Sender-side state. `preparing` is the
 /// sha-256 hashing wait after file selection — previously a silent `busy`
 /// wait that read as frozen on large files.
 enum SenderPhase { idle, busy, preparing, ready, serving, completed, failed }
@@ -45,7 +45,7 @@ class SenderState {
   final int? port;
   final String? token;
 
-  /// Session lifetime end for the UI countdown (MVP 3 Phase 3A).
+  /// Session lifetime end for the UI countdown.
   final DateTime? expiresAt;
 
   /// Monotonic while the session lives: the server never un-connects a
@@ -101,9 +101,9 @@ class SenderController extends Notifier<SenderState> {
   }
 
   /// Picks a file and computes its REAL byte size + streamed sha-256 —
-  /// string-length metadata breaks the HTTP Content-Length contract (2B lesson).
+  /// string-length metadata breaks the HTTP Content-Length contract.
   /// The hashing pass is user-visible (`preparing`) with progress, not a
-  /// silent wait (MVP 5 Phase 5A).
+  /// silent wait.
   Future<void> pickFile() async {
     state = const SenderState(phase: SenderPhase.busy);
     try {
@@ -186,7 +186,7 @@ class SenderController extends Notifier<SenderState> {
           _poll = null;
           final terminal = s.session.status;
           // Expired with no receiver is a sender-visible failure, not a
-          // completed transfer (Phase 3C).
+          // completed transfer.
           final expired = terminal == TransferSessionStatus.expired;
           state = state.copyWith(
             phase: terminal == TransferSessionStatus.failed || expired
@@ -236,7 +236,7 @@ class SenderController extends Notifier<SenderState> {
   }
 }
 
-/// Receiver-side state (MVP 3 Phase 3B).
+/// Receiver-side state.
 class ReceiverState {
   const ReceiverState({
     this.busy = false,
@@ -285,7 +285,7 @@ class ReceiverState {
 }
 
 /// Drives the receiver flow: manual host/port/token entry → download with
-/// live progress → cancel → result → retry / return-to-form (Phase 3C).
+/// live progress → cancel → result → retry / return-to-form.
 class ReceiverController extends Notifier<ReceiverState> {
   TransferCancelToken? _cancel;
 
@@ -364,7 +364,7 @@ class ReceiverController extends Notifier<ReceiverState> {
 
   void cancel() => _cancel?.cancel();
 
-  /// Re-issues the last download with the same credentials (Phase 3C);
+  /// Re-issues the last download with the same credentials;
   /// silently ignored when no download was started from this controller.
   Future<void> retry() {
     final host = _lastHost;

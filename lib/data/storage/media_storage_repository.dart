@@ -8,7 +8,7 @@ import '../../domain/models/stored_file.dart';
 import '../../domain/repositories/storage_repository.dart';
 
 /// Android implementation of [StorageRepository] backed by the PUBLIC
-/// `Download/zanado/` directory via MediaStore (MVP 1.1, SHAREit-like).
+/// `Download/zanado/` directory via MediaStore (SHAREit-like).
 ///
 /// Files saved here are visible to the system file manager and other apps.
 /// The native side (MainActivity.kt, channel `zanado/storage`) performs all

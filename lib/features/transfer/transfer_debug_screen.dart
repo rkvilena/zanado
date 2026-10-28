@@ -5,8 +5,8 @@ import '../storage/storage_debug_screen.dart';
 import '../../data/network/transfer_receiver.dart';
 import 'transfer_controller.dart';
 
-/// Minimal debug screens for the MVP 2 Phase 2D device proof: manual pairing
-/// (host/port/token), no polish, no progress UI — replaced in MVP 3.
+/// Minimal debug screens for the device proof: manual pairing
+/// (host/port/token), no polish, no progress UI.
 class TransferDebugScreen extends ConsumerWidget {
   const TransferDebugScreen({super.key});
 
@@ -16,10 +16,10 @@ class TransferDebugScreen extends ConsumerWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Zanado — Transfer (MVP 2 debug)'),
+          title: const Text('Zanado — Transfer'),
           actions: [
             IconButton(
-              tooltip: 'Storage debug (MVP 1)',
+              tooltip: 'Storage',
               icon: const Icon(Icons.folder_outlined),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const StorageDebugScreen()),

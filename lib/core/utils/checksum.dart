@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
-/// SHA-256 checksum helpers (Phase 2A contract: representation + validation).
+/// SHA-256 checksum helpers: canonical representation + validation.
 class ChecksumUtils {
   ChecksumUtils._();
 

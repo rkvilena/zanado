@@ -11,7 +11,7 @@ import '../../shared/visual_tokens.dart';
 import 'qr_scanner_sheet.dart';
 import 'transfer_controller.dart';
 
-/// Receiver workflow (MVP 3 Phase 3B): manual connection entry → live
+/// Receiver workflow: manual connection entry → live
 /// byte-level progress + speed → cancel → terminal result via an exhaustive
 /// switch on the sealed [DownloadOutcome].
 class ReceiverScreen extends ConsumerStatefulWidget {
@@ -34,10 +34,10 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
     super.dispose();
   }
 
-  /// Exhaustive switch over the Phase 4A parse result: valid codes prefill
+  /// Exhaustive switch over the payload parse result: valid codes prefill
   /// the manual form, expired ones point at recovery, malformed ones explain
   /// why nothing was filled. Shared by the QR scanner and the paste button
-  /// (Phase 4D) so both inputs behave identically.
+  /// so both inputs behave identically.
   void _applyCode(String raw) {
     final result = TransferPayload.parse(raw);
     switch (result) {
@@ -62,7 +62,7 @@ class _ReceiverScreenState extends ConsumerState<ReceiverScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Phase 4D: Windows-friendly pairing — the sender's full connection code
+  /// Windows-friendly pairing — the sender's full connection code
   /// can be copied once and pasted here, no camera required.
   Future<void> _pasteCode() async {
     final data = await Clipboard.getData('text/plain');
@@ -311,7 +311,7 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
-/// User-facing text per sender rejection code (Phase 3C); the raw code
+/// User-facing text per sender rejection code; the raw code
 /// message is the fallback for unknown/unparsed bodies.
 String _rejectionText(TransferErrorCode? code, String fallback) {
   switch (code) {
@@ -352,7 +352,7 @@ class _OutcomeBanner extends StatelessWidget {
               '${renamed ? ' (renamed — "${s.wireFileName}" already existed)' : ''}',
         );
       case final DownloadFailure f:
-        // MVP 5 Phase 5A: checksum failure gets a dedicated, unmissable card
+        // Checksum failure gets a dedicated, unmissable card
         // — the file was discarded, not saved.
         if (f.kind == DownloadFailureKind.checksumMismatch) {
           return _ChecksumFailureCard(message: f.message);
@@ -399,7 +399,7 @@ class _OutcomeBanner extends StatelessWidget {
   }
 }
 
-/// MVP 5 Phase 5A: explicit checksum-failure state. The corrupt bytes were
+/// Explicit checksum-failure state. The corrupt bytes were
 /// discarded (temporary/committed file removed), so nothing partial is shown
 /// as complete and the user must retry to get the file.
 class _ChecksumFailureCard extends StatelessWidget {

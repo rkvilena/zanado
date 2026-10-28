@@ -1,4 +1,4 @@
-/// A file stored in the Zanado application directory (Module A).
+/// A file stored in the Zanado application directory.
 ///
 /// Pure domain object: no Flutter or dart:io imports.
 class StoredFile {

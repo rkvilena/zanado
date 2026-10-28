@@ -93,7 +93,7 @@ final storageListControllerProvider =
   StorageListController.new,
 );
 
-/// Resolved absolute path of the storage directory (debug display).
+/// Resolved absolute path of the storage directory.
 final storageDirectoryPathProvider = FutureProvider<String>(
   (ref) => ref.watch(storageRepositoryProvider).directoryPath(),
 );

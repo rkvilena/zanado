@@ -17,7 +17,7 @@ class InvalidFileNameException extends StorageException {
   const InvalidFileNameException(super.message);
 }
 
-/// Abstract local file storage (Module A).
+/// Abstract local file storage.
 ///
 /// Implementations must:
 /// - never expose partial writes as completed files (tmp-then-rename),
@@ -32,7 +32,7 @@ abstract class StorageRepository {
   Future<StoredFile> saveFromFile(String sourcePath, {String? displayName});
 
   /// Streams bytes into the app storage directory. Intended for incoming
-  /// network transfers (MVP 2+): writes to a temporary path and renames only
+  /// network transfers: writes to a temporary path and renames only
   /// after the stream completes successfully.
   Future<StoredFile> saveStream(
     Stream<List<int>> bytes,

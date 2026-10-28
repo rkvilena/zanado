@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Shared visual tokens (MVP 5 Phase 5B-1). Single source of truth for
+/// Shared visual tokens. Single source of truth for
 /// spacing, shape, and status colors so home/sender/receiver stay coherent
 /// across Android and Windows. Values mirror the pre-token rendering; tune
-/// in 5B-2/5B-3 with review, not assumption.
+/// with review, not assumption.
 
 abstract final class ZanadoSpacing {
   static const double xs = 4;

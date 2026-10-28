@@ -5,9 +5,9 @@ import '../storage/storage_debug_screen.dart';
 import 'receiver_screen.dart';
 import 'sender_screen.dart';
 
-/// MVP 3 app shell: user picks SEND or RECEIVE and navigates to the
-/// corresponding workflow screen. Storage debug stays reachable for
-/// developer verification until the library UI (MVP 5) replaces it.
+/// Home screen: user picks SEND or RECEIVE and navigates to the
+/// corresponding workflow screen. Storage stays reachable for
+/// developer verification until the library UI replaces it.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -18,7 +18,7 @@ class HomeScreen extends StatelessWidget {
         title: const Text('Zanado'),
         actions: [
           IconButton(
-            tooltip: 'Storage debug (MVP 1)',
+            tooltip: 'Storage',
             icon: const Icon(Icons.folder_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const StorageDebugScreen()),

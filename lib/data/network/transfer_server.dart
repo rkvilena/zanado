@@ -6,7 +6,7 @@ import '../../core/constants/transfer_protocol.dart';
 import '../../core/utils/token.dart';
 import '../../domain/models/transfer_session.dart';
 
-/// Sender-side HTTP server for one transfer session (Phase 2B, Module B).
+/// Sender-side HTTP server for one transfer session.
 ///
 /// Contract (from `TransferProtocol`):
 /// - one file endpoint, token-authenticated, streamed response;

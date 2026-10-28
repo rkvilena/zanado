@@ -1,6 +1,6 @@
 import '../../core/utils/token.dart';
 
-/// Pairing payload encoded into the sender's QR code (Module C).
+/// Pairing payload encoded into the sender's QR code.
 ///
 /// Wire format: `zanado://transfer?host=<ip>&port=<port>&token=<token>&expires=<epochMillisUtc>`
 /// — UTC epoch millis so both platforms parse the expiry identically
@@ -42,7 +42,7 @@ class TransferPayload {
   final String token;
   final DateTime expiresAt;
 
-  /// Canonical URI string for QR rendering (Phase 4B).
+  /// Canonical URI string for QR rendering.
   String toUriString() =>
       'zanado://transfer?host=${Uri.encodeComponent(host)}'
       '&port=$port'
