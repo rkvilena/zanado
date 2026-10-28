@@ -1,6 +1,6 @@
 # Zanado
 
-A fast, private, offline file-transfer app for **Android ↔ Windows** over your local Wi-Fi network. No cloud, no accounts, no cables — just pick a file on one device, scan a QR code with the other, and the file lands in the receiving device's Downloads folder, checksum-verified.
+A fast, private, offline file-transfer app for **Android ↔ Windows** over your local network. No cloud, no accounts, no cables — just pick a file on one device, scan a QR code with the other, and the file lands in the receiving device's Downloads folder, checksum-verified.
 
 ---
 
@@ -119,8 +119,4 @@ Planned, not implemented in v1.0:
 - **Media playback** — open received audio/video via content URIs without copying.
 - **Encrypted transfer (TLS)** — trust-on-first-use pairing over the LAN.
 - **Transfer resume** — resume from the `.part` byte offset (HTTP `Range`), with full-file checksum verification after resume.
-
-## License
-
-<!-- RESERVED: choose a license and add its text here. -->
 
